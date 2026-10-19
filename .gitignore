@@ -1,0 +1,31 @@
+# Ignore Gradle project-specific cache directory
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Ignore Android Studio / IntelliJ IDEA files
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local configuration & secrets (NEVER commit API keys or signing configs)
+local.properties
+*.jks
+*.keystore
+google-services.json
+secrets.properties
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# APK / AAB outputs
+*.apk
+*.ap_
+*.aab
+*.dex
