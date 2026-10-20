@@ -1,0 +1,232 @@
+package app.zerowater.map.ui.map
+
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import app.zerowater.map.data.location.GeoPoint
+import app.zerowater.map.data.model.AccessType
+import java.util.Locale
+
+@Composable
+fun AddStationSheet(
+    pickedLocation: GeoPoint,
+    onDismiss: () -> Unit,
+    onSubmit: (
+        name: String,
+        floorHint: String,
+        accessType: AccessType,
+        hasHot: Boolean,
+        hasWarm: Boolean,
+        hasCold: Boolean,
+        hasIced: Boolean,
+        is24Hours: Boolean,
+        openHours: String
+    ) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var floorHint by remember { mutableStateOf("") }
+    var accessType by remember { mutableStateOf(AccessType.PUBLIC) }
+    var hasHot by remember { mutableStateOf(true) }
+    var hasWarm by remember { mutableStateOf(true) }
+    var hasCold by remember { mutableStateOf(true) }
+    var hasIced by remember { mutableStateOf(false) }
+    var is24Hours by remember { mutableStateOf(false) }
+    var openHours by remember { mutableStateOf("08:00 - 22:00") }
+    var showNameError by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "通報新的取水點",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = String.format(
+                Locale.US,
+                "座標位置：%.5f, %.5f",
+                pickedLocation.latitude,
+                pickedLocation.longitude
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        OutlinedTextField(
+            value = name,
+            onValueChange = {
+                name = it
+                if (it.isNotBlank()) showNameError = false
+            },
+            label = { Text("取水點名稱 *") },
+            placeholder = { Text("例：大安運動中心 1F 飲水機") },
+            isError = showNameError,
+            supportingText = if (showNameError) {
+                { Text("請輸入取水點名稱") }
+            } else {
+                null
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = floorHint,
+            onValueChange = { floorHint = it },
+            label = { Text("樓層與詳細位置提示") },
+            placeholder = { Text("例：1F 櫃台後方洗手間旁、水壺好裝") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text(
+            text = "進入門檻",
+            style = MaterialTheme.typography.labelLarge
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = accessType == AccessType.PUBLIC,
+                onClick = { accessType = AccessType.PUBLIC },
+                label = { Text("完全開放") }
+            )
+            FilterChip(
+                selected = accessType == AccessType.SEMI_PUBLIC,
+                onClick = { accessType = AccessType.SEMI_PUBLIC },
+                label = { Text("半開放場館 (圖書館/捷運)") }
+            )
+            FilterChip(
+                selected = accessType == AccessType.RESTRICTED,
+                onClick = { accessType = AccessType.RESTRICTED },
+                label = { Text("需門禁/證件") }
+            )
+        }
+
+        Text(
+            text = "供應水溫（可複選）",
+            style = MaterialTheme.typography.labelLarge
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = hasHot,
+                onClick = { hasHot = !hasHot },
+                label = { Text("熱水") }
+            )
+            FilterChip(
+                selected = hasWarm,
+                onClick = { hasWarm = !hasWarm },
+                label = { Text("溫水") }
+            )
+            FilterChip(
+                selected = hasCold,
+                onClick = { hasCold = !hasCold },
+                label = { Text("冷水") }
+            )
+            FilterChip(
+                selected = hasIced,
+                onClick = { hasIced = !hasIced },
+                label = { Text("冰水") }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "24 小時全天開放",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Switch(
+                checked = is24Hours,
+                onCheckedChange = { is24Hours = it }
+            )
+        }
+
+        if (!is24Hours) {
+            OutlinedTextField(
+                value = openHours,
+                onValueChange = { openHours = it },
+                label = { Text("開放時間") },
+                placeholder = { Text("例：06:00 - 22:00") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("取消")
+            }
+            Button(
+                onClick = {
+                    if (name.isBlank()) {
+                        showNameError = true
+                    } else {
+                        onSubmit(
+                            name,
+                            floorHint,
+                            accessType,
+                            hasHot,
+                            hasWarm,
+                            hasCold,
+                            hasIced,
+                            is24Hours,
+                            openHours
+                        )
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("確認新增")
+            }
+        }
+    }
+}

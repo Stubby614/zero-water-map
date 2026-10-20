@@ -8,7 +8,8 @@
   - **進入門檻 (`AccessType`)**：區分「完全開放」、「半開放場館（圖書館／運動中心／捷運站）」與「需門禁或學生證」。
   - **水溫篩選**：一鍵篩選「有冰水」、「有熱水（泡麵族必備）」、「免門禁」。
   - **詳細樓層指引 (`floorHint`)**：例如「1F 服務台後方茶水間」、「B1 往捷運連通道洗手間外」。
-  - **群眾外包狀態回報**：一鍵回報「正常出水」、「濾心亮紅燈」、「故障維修中」。
+  - **群眾外包通報與狀態回報**：支援拖曳地圖中心紅針準星「通報新的取水點」，以及一鍵回報「正常出水」、「濾心亮紅燈」、「故障維修中」。
+  - **即時定位、最近點位推薦與步行路線繪製**：自動計算使用者與各取水點的距離與預估步行時間，點擊取水點後直接在地圖上繪製 **OSRM 最佳步行路線（含離線直線估算備援）**。
 - **離線優先 (Offline-first)**：使用 **Room SQLite** 快取飲水機點位，租屋處周邊點位載入後無網路也能查詢。
 
 ## 技術棧 (Tech Stack)
@@ -24,13 +25,15 @@
 ```text
 app/src/main/java/app/zerowater/map/
 ├── data/
+│   ├── location/      # LocationTracker (FusedLocation + 定位權限與距離/步行時間格式化)
+│   ├── route/         # RouteRepository (OSRM 步行路線規劃與離線直線估算備援)
 │   ├── model/         # WaterStation, AccessType, StationStatus 資料模型
 │   ├── local/         # Room Entity, DAO (支援經緯度 Bounding Box 查詢), Database
 │   ├── remote/        # Retrofit API 介面 (預留對接 GCP Cloud Run)
 │   └── repository/    # WaterStationRepository (含預設台灣種子點位)
 ├── di/                # Hilt DI Module (AppModule)
 ├── ui/
-│   ├── map/           # MapScreen, MapLibreView, MapViewModel
+│   ├── map/           # MapScreen, MapLibreView, AddStationSheet, MapViewModel
 │   └── theme/         # Material 3 主題配色
 ├── MainActivity.kt
 └── ZeroWaterApplication.kt
