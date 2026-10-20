@@ -2,7 +2,9 @@ package app.zerowater.map.ui.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.zerowater.map.data.location.AddressCandidate
 import app.zerowater.map.data.location.GeoPoint
+import app.zerowater.map.data.location.GeocodingService
 import app.zerowater.map.data.location.LocationTracker
 import app.zerowater.map.data.model.AccessType
 import app.zerowater.map.data.model.StationStatus
@@ -42,6 +44,9 @@ private data class InteractionState(
     val isLoadingRoute: Boolean = false,
     val isPickingLocation: Boolean = false,
     val pickedLocation: GeoPoint = GeoPoint(25.0375, 121.5320),
+    val pickedAddress: String? = null,
+    val addressSearchResults: List<AddressCandidate> = emptyList(),
+    val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
     val cameraTarget: CameraTargetEvent? = null
 )
@@ -58,6 +63,9 @@ data class MapUiState(
     val nearestDistanceMeters: Float? = null,
     val isPickingLocation: Boolean = false,
     val pickedLocation: GeoPoint = GeoPoint(25.0375, 121.5320),
+    val pickedAddress: String? = null,
+    val addressSearchResults: List<AddressCandidate> = emptyList(),
+    val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
     val cameraTarget: CameraTargetEvent? = null
 )
@@ -66,6 +74,7 @@ data class MapUiState(
 class MapViewModel @Inject constructor(
     private val repository: WaterStationRepository,
     private val locationTracker: LocationTracker,
+    private val geocodingService: GeocodingService,
     private val routeRepository: RouteRepository
 ) : ViewModel() {
 
@@ -73,8 +82,9 @@ class MapViewModel @Inject constructor(
     private val selectedStationIdFlow = MutableStateFlow<String?>(null)
     private val interactionFlow = MutableStateFlow(InteractionState())
     private var routeJob: Job? = null
+    private var reverseGeocodeJob: Job? = null
+    private var searchAddressJob: Job? = null
     private var cameraSeq = 0
-
     val uiState: StateFlow<MapUiState> = combine(
         repository.observeStations(),
         filterFlow,
@@ -114,6 +124,9 @@ class MapViewModel @Inject constructor(
             nearestDistanceMeters = nearestDist,
             isPickingLocation = interaction.isPickingLocation,
             pickedLocation = interaction.pickedLocation,
+            pickedAddress = interaction.pickedAddress,
+            addressSearchResults = interaction.addressSearchResults,
+            isSearchingAddress = interaction.isSearchingAddress,
             showAddStationSheet = interaction.showAddStationSheet,
             cameraTarget = interaction.cameraTarget
         )
@@ -206,43 +219,140 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    fun openAddStationSheet() {
+        selectedStationIdFlow.value = null
+        val startPoint = interactionFlow.value.userLocation ?: interactionFlow.value.pickedLocation
+        interactionFlow.update {
+            it.copy(
+                isPickingLocation = false,
+                showAddStationSheet = true,
+                pickedLocation = startPoint,
+                addressSearchResults = emptyList(),
+                activeRoute = null
+            )
+        }
+        refreshPickedAddress(startPoint)
+    }
+
     fun startPickingNewStationLocation() {
         selectedStationIdFlow.value = null
+        val startPoint = interactionFlow.value.userLocation ?: interactionFlow.value.pickedLocation
         interactionFlow.update {
             it.copy(
                 isPickingLocation = true,
                 showAddStationSheet = false,
+                pickedLocation = startPoint,
+                addressSearchResults = emptyList(),
                 activeRoute = null
             )
         }
+        refreshPickedAddress(startPoint)
     }
 
     fun cancelPickingNewStationLocation() {
         interactionFlow.update {
             it.copy(
                 isPickingLocation = false,
-                showAddStationSheet = false
+                showAddStationSheet = false,
+                addressSearchResults = emptyList()
             )
         }
     }
 
     fun onMapCameraIdle(center: GeoPoint) {
         interactionFlow.update { it.copy(pickedLocation = center) }
+        if (interactionFlow.value.isPickingLocation) {
+            refreshPickedAddress(center)
+        }
+    }
+
+    private fun refreshPickedAddress(point: GeoPoint) {
+        reverseGeocodeJob?.cancel()
+        reverseGeocodeJob = viewModelScope.launch {
+            val address = geocodingService.reverseGeocode(point)
+            interactionFlow.update { it.copy(pickedAddress = address) }
+        }
+    }
+
+    fun useCurrentLocationForNewStation() {
+        viewModelScope.launch {
+            interactionFlow.update { it.copy(isLocating = true) }
+            val freshLocation = locationTracker.getCurrentLocation()
+                ?: interactionFlow.value.userLocation
+            if (freshLocation != null) {
+                interactionFlow.update {
+                    it.copy(
+                        userLocation = freshLocation,
+                        isLocating = false,
+                        pickedLocation = freshLocation,
+                        addressSearchResults = emptyList(),
+                        cameraTarget = CameraTargetEvent(
+                            point = freshLocation,
+                            zoom = 17.0,
+                            seq = ++cameraSeq
+                        )
+                    )
+                }
+                refreshPickedAddress(freshLocation)
+            } else {
+                interactionFlow.update { it.copy(isLocating = false) }
+            }
+        }
+    }
+
+    fun searchAddressForNewStation(query: String) {
+        searchAddressJob?.cancel()
+        if (query.isBlank()) {
+            interactionFlow.update {
+                it.copy(addressSearchResults = emptyList(), isSearchingAddress = false)
+            }
+            return
+        }
+        searchAddressJob = viewModelScope.launch {
+            interactionFlow.update { it.copy(isSearchingAddress = true) }
+            val results = geocodingService.searchAddress(query)
+            interactionFlow.update {
+                it.copy(
+                    addressSearchResults = results,
+                    isSearchingAddress = false
+                )
+            }
+        }
+    }
+
+    fun selectAddressCandidate(candidate: AddressCandidate) {
+        interactionFlow.update {
+            it.copy(
+                pickedLocation = candidate.point,
+                pickedAddress = candidate.fullAddress,
+                addressSearchResults = emptyList(),
+                cameraTarget = CameraTargetEvent(
+                    point = candidate.point,
+                    zoom = 17.0,
+                    seq = ++cameraSeq
+                )
+            )
+        }
     }
 
     fun confirmPickedLocation() {
         interactionFlow.update {
             it.copy(
                 isPickingLocation = false,
-                showAddStationSheet = true
+                showAddStationSheet = true,
+                addressSearchResults = emptyList()
             )
         }
     }
 
     fun dismissAddStationSheet() {
-        interactionFlow.update { it.copy(showAddStationSheet = false) }
+        interactionFlow.update {
+            it.copy(
+                showAddStationSheet = false,
+                addressSearchResults = emptyList()
+            )
+        }
     }
-
     fun submitNewStation(
         name: String,
         floorHint: String,

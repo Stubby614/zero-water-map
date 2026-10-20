@@ -1,5 +1,6 @@
 package app.zerowater.map.ui.map
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,10 +9,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -26,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.zerowater.map.data.location.AddressCandidate
 import app.zerowater.map.data.location.GeoPoint
 import app.zerowater.map.data.model.AccessType
 import java.util.Locale
@@ -33,6 +46,14 @@ import java.util.Locale
 @Composable
 fun AddStationSheet(
     pickedLocation: GeoPoint,
+    pickedAddress: String?,
+    isLocating: Boolean,
+    isSearchingAddress: Boolean,
+    addressSearchResults: List<AddressCandidate>,
+    onUseCurrentLocation: () -> Unit,
+    onSearchAddress: (String) -> Unit,
+    onSelectAddressCandidate: (AddressCandidate) -> Unit,
+    onPickOnMap: () -> Unit,
     onDismiss: () -> Unit,
     onSubmit: (
         name: String,
@@ -48,6 +69,7 @@ fun AddStationSheet(
 ) {
     var name by remember { mutableStateOf("") }
     var floorHint by remember { mutableStateOf("") }
+    var addressQuery by remember { mutableStateOf("") }
     var accessType by remember { mutableStateOf(AccessType.PUBLIC) }
     var hasHot by remember { mutableStateOf(true) }
     var hasWarm by remember { mutableStateOf(true) }
@@ -71,16 +93,141 @@ fun AddStationSheet(
             fontWeight = FontWeight.Bold
         )
 
-        Text(
-            text = String.format(
-                Locale.US,
-                "座標位置：%.5f, %.5f",
-                pickedLocation.latitude,
-                pickedLocation.longitude
+        // Location Selection Card (Current GPS / Address Search / Map Pin)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "📍 取水點位置",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!pickedAddress.isNullOrBlank()) {
+                    Text(
+                        text = pickedAddress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Text(
+                    text = String.format(
+                        Locale.US,
+                        "經緯度：%.5f, %.5f",
+                        pickedLocation.latitude,
+                        pickedLocation.longitude
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onUseCurrentLocation,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isLocating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.MyLocation,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(" 用目前定位", style = MaterialTheme.typography.labelMedium)
+                    }
+
+                    OutlinedButton(
+                        onClick = onPickOnMap,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(" 地圖拖曳選點", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+
+                OutlinedTextField(
+                    value = addressQuery,
+                    onValueChange = { addressQuery = it },
+                    label = { Text("或輸入地址／地標搜尋位置") },
+                    placeholder = { Text("例：台北市中正區北平西路3號 或 台大總圖") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (isSearchingAddress) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            IconButton(onClick = { onSearchAddress(addressQuery) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "搜尋地址"
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (addressSearchResults.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            addressSearchResults.forEachIndexed { index, candidate ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelectAddressCandidate(candidate)
+                                            addressQuery = candidate.fullAddress
+                                            if (name.isBlank()) {
+                                                name = "${candidate.title} 飲水機"
+                                            }
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        text = candidate.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = candidate.fullAddress,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (index < addressSearchResults.lastIndex) {
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         OutlinedTextField(
             value = name,

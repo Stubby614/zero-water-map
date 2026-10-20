@@ -221,20 +221,46 @@ fun MapScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "請拖曳地圖，將紅針準星對準飲水機位置",
+                        text = "拖曳地圖將紅針準星對準飲水機，或直接用目前定位",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    if (!uiState.pickedAddress.isNullOrBlank()) {
+                        Text(
+                            text = "地址：${uiState.pickedAddress}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                     Text(
                         text = String.format(
                             Locale.US,
-                            "目前準星座標：%.5f, %.5f",
+                            "準星座標：%.5f, %.5f",
                             uiState.pickedLocation.latitude,
                             uiState.pickedLocation.longitude
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    OutlinedButton(
+                        onClick = {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                            viewModel.useCurrentLocationForNewStation()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MyLocation,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(" 將準星移到我的目前定位")
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -290,7 +316,7 @@ fun MapScreen(
                 }
 
                 ExtendedFloatingActionButton(
-                    onClick = viewModel::startPickingNewStationLocation,
+                    onClick = viewModel::openAddStationSheet,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.AddLocationAlt,
@@ -352,6 +378,22 @@ fun MapScreen(
             ) {
                 AddStationSheet(
                     pickedLocation = uiState.pickedLocation,
+                    pickedAddress = uiState.pickedAddress,
+                    isLocating = uiState.isLocating,
+                    isSearchingAddress = uiState.isSearchingAddress,
+                    addressSearchResults = uiState.addressSearchResults,
+                    onUseCurrentLocation = {
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                        viewModel.useCurrentLocationForNewStation()
+                    },
+                    onSearchAddress = viewModel::searchAddressForNewStation,
+                    onSelectAddressCandidate = viewModel::selectAddressCandidate,
+                    onPickOnMap = viewModel::startPickingNewStationLocation,
                     onDismiss = viewModel::dismissAddStationSheet,
                     onSubmit = viewModel::submitNewStation
                 )
