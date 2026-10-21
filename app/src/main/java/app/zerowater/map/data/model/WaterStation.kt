@@ -46,5 +46,6 @@ data class WaterStation(
     val openHours: String = "依場館開放時間",
     val status: StationStatus = StationStatus.WORKING,
     val photoUri: String? = null,
+    val isFavorite: Boolean = false,
     val lastVerifiedEpochMillis: Long = System.currentTimeMillis()
 )

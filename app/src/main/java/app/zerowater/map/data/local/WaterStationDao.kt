@@ -29,6 +29,9 @@ interface WaterStationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(stations: List<WaterStationEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnoreAll(stations: List<WaterStationEntity>): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(station: WaterStationEntity)
 
@@ -40,6 +43,9 @@ interface WaterStationDao {
         """
     )
     suspend fun updateStatus(stationId: String, status: String, verifiedAt: Long)
+
+    @Query("UPDATE water_stations SET isFavorite = :isFavorite WHERE id = :stationId")
+    suspend fun updateFavorite(stationId: String, isFavorite: Boolean)
 
     @Query("SELECT COUNT(*) FROM water_stations")
     suspend fun count(): Int
