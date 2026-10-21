@@ -9,13 +9,27 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Url
 
 @Serializable
 data class StatusReportRequest(
     val status: StationStatus
 )
 
+@Serializable
+data class OpenWaterDatasetDto(
+    val version: Int = 1,
+    val updatedAt: String = "",
+    val license: String = "CC-BY-4.0",
+    val stations: List<WaterStation> = emptyList(),
+    val reviews: List<StationReview> = emptyList()
+)
+
 interface WaterStationApi {
+    @GET
+    suspend fun fetchOpenDataSnapshot(
+        @Url url: String
+    ): OpenWaterDatasetDto
     @GET("stations")
     suspend fun getNearbyStations(
         @Query("lat") latitude: Double,

@@ -1,0 +1,10 @@
+{
+  "name": "zero-water-map-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloud Run Backend API & Open Data publisher for Zero Water Map (拎水地圖)",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "dev": "bun --watch run src/server.ts"
+  }
+}

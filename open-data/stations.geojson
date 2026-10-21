@@ -1,0 +1,90 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "name": "Zero Water Map (拎水地圖) Taiwan Drinking Water Stations",
+    "license": "CC-BY-4.0",
+    "updatedAt": "2026-10-21T00:00:00Z"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "tpe-main-station-b1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5174, 25.0462]
+      },
+      "properties": {
+        "name": "台北車站 B1 誠品捷運連通道飲水機",
+        "floorHint": "B1 往捷運淡水信義線閘門旁、洗手間外",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "is24Hours": false,
+        "openHours": "06:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "tpe-library-daan",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5378, 25.0289]
+      },
+      "properties": {
+        "name": "臺北市立圖書館總館 1F 飲水機",
+        "floorHint": "1F 服務台後方茶水間（免換證可直接入內）",
+        "accessType": "SEMI_PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "is24Hours": false,
+        "openHours": "08:30 - 21:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "ntu-total-library-b1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5405, 25.0174]
+      },
+      "properties": {
+        "name": "台大總圖書館 B1 自習室外部飲水機",
+        "floorHint": "B1 國際會議廳走廊旁（免刷學生證區域）",
+        "accessType": "SEMI_PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "is24Hours": false,
+        "openHours": "08:00 - 22:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zhongshan-sports-center-1f",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5214, 25.0548]
+      },
+      "properties": {
+        "name": "中山運動中心 1F 大廳飲水機",
+        "floorHint": "1F 進門右手邊販賣機旁，大口徑水壺好裝",
+        "accessType": "SEMI_PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "is24Hours": false,
+        "openHours": "06:00 - 22:00",
+        "status": "WORKING"
+      }
+    }
+  ]
+}
