@@ -29,6 +29,7 @@ data class WaterStationEntity(
     val is24Hours: Boolean,
     val openHours: String,
     val status: String,
+    val photoUri: String? = null,
     val lastVerifiedEpochMillis: Long
 ) {
     fun toDomain(): WaterStation = WaterStation(
@@ -45,6 +46,7 @@ data class WaterStationEntity(
         is24Hours = is24Hours,
         openHours = openHours,
         status = runCatching { StationStatus.valueOf(status) }.getOrDefault(StationStatus.WORKING),
+        photoUri = photoUri,
         lastVerifiedEpochMillis = lastVerifiedEpochMillis
     )
 
@@ -63,6 +65,7 @@ data class WaterStationEntity(
             is24Hours = station.is24Hours,
             openHours = station.openHours,
             status = station.status.name,
+            photoUri = station.photoUri,
             lastVerifiedEpochMillis = station.lastVerifiedEpochMillis
         )
     }

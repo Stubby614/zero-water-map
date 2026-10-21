@@ -4,10 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [WaterStationEntity::class],
-    version = 1,
+    entities = [WaterStationEntity::class, StationReviewEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class ZeroWaterDatabase : RoomDatabase() {
     abstract fun waterStationDao(): WaterStationDao
+    abstract fun stationReviewDao(): StationReviewDao
 }

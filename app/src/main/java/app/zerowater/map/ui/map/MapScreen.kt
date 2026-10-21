@@ -4,7 +4,9 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +22,24 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,29 +50,46 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.zerowater.map.data.location.DistanceFormatter
 import app.zerowater.map.data.location.GeoPoint
+import app.zerowater.map.data.model.QUICK_REVIEW_TAGS
+import app.zerowater.map.data.model.StationRatingSummary
+import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
 import app.zerowater.map.data.model.WaterStation
 import app.zerowater.map.data.route.RouteInfo
+import coil.compose.AsyncImage
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -76,6 +107,37 @@ fun MapScreen(
             viewModel.refreshUserLocation(moveCamera = true)
         }
     }
+    val stationGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onDraftStationPhotoPicked(uri)
+        }
+    }
+
+    val stationCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            viewModel.onDraftStationCameraBitmap(bitmap)
+        }
+    }
+
+    val reviewGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onDraftReviewPhotoPicked(uri)
+        }
+    }
+
+    val reviewCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            viewModel.onDraftReviewCameraBitmap(bitmap)
+        }
+    }
 
     LaunchedEffect(Unit) {
         locationPermissionLauncher.launch(
@@ -85,7 +147,6 @@ fun MapScreen(
             )
         )
     }
-
     Box(modifier = Modifier.fillMaxSize()) {
         MapLibreView(
             stations = uiState.stations,
@@ -338,6 +399,28 @@ fun MapScreen(
                     userLocation = uiState.userLocation,
                     routeInfo = uiState.activeRoute,
                     isLoadingRoute = uiState.isLoadingRoute,
+                    ratingSummary = uiState.ratingSummaries[station.id],
+                    reviews = uiState.selectedStationReviews,
+                    photos = uiState.selectedStationPhotos,
+                    draftReviewPhotoUri = uiState.draftReviewPhotoUri,
+                    onPickReviewPhoto = {
+                        reviewGalleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    onTakeReviewPhoto = {
+                        reviewCameraLauncher.launch(null)
+                    },
+                    onClearReviewPhoto = viewModel::clearDraftReviewPhoto,
+                    onSubmitReview = { authorName, rating, comment, tags ->
+                        viewModel.addStationReview(
+                            stationId = station.id,
+                            authorName = authorName,
+                            rating = rating,
+                            comment = comment,
+                            tags = tags
+                        )
+                    },
                     onRequestLocation = {
                         locationPermissionLauncher.launch(
                             arrayOf(
@@ -382,6 +465,16 @@ fun MapScreen(
                     isLocating = uiState.isLocating,
                     isSearchingAddress = uiState.isSearchingAddress,
                     addressSearchResults = uiState.addressSearchResults,
+                    draftPhotoUri = uiState.draftStationPhotoUri,
+                    onPickPhotoFromGallery = {
+                        stationGalleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    onTakePhotoWithCamera = {
+                        stationCameraLauncher.launch(null)
+                    },
+                    onRemoveDraftPhoto = viewModel::clearDraftStationPhoto,
                     onUseCurrentLocation = {
                         locationPermissionLauncher.launch(
                             arrayOf(
@@ -408,13 +501,67 @@ private fun StationDetailSheet(
     userLocation: GeoPoint?,
     routeInfo: RouteInfo?,
     isLoadingRoute: Boolean,
+    ratingSummary: StationRatingSummary?,
+    reviews: List<StationReview>,
+    photos: List<String>,
+    draftReviewPhotoUri: String?,
+    onPickReviewPhoto: () -> Unit,
+    onTakeReviewPhoto: () -> Unit,
+    onClearReviewPhoto: () -> Unit,
+    onSubmitReview: (authorName: String, rating: Int, comment: String, tags: List<String>) -> Unit,
     onRequestLocation: () -> Unit,
     onNavigateClick: () -> Unit,
     onReportStatus: (StationStatus) -> Unit
 ) {
+    var showReviewForm by remember(station.id) { mutableStateOf(false) }
+    var authorName by remember(station.id) { mutableStateOf("") }
+    var rating by remember(station.id) { mutableIntStateOf(5) }
+    var selectedTags by remember(station.id) { mutableStateOf(setOf<String>()) }
+    var comment by remember(station.id) { mutableStateOf("") }
+    var enlargedPhotoUri by remember { mutableStateOf<String?>(null) }
+
+    if (enlargedPhotoUri != null) {
+        Dialog(
+            onDismissRequest = { enlargedPhotoUri = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f))
+                    .clickable { enlargedPhotoUri = null }
+            ) {
+                AsyncImage(
+                    model = enlargedPhotoUri,
+                    contentDescription = "放大檢視現場照片",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                )
+                IconButton(
+                    onClick = { enlargedPhotoUri = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(20.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "關閉照片預覽"
+                    )
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -425,6 +572,41 @@ private fun StationDetailSheet(
             fontWeight = FontWeight.Bold
         )
 
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (ratingSummary != null && ratingSummary.reviewCount > 0) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB300),
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = String.format(
+                        Locale.TAIWAN,
+                        "%.1f (%d 則評價)",
+                        ratingSummary.averageRating,
+                        ratingSummary.reviewCount
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.StarBorder,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "尚無評價 · 成為第一個回報的人",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         // Distance & Walking Route Card
         Card(
             colors = CardDefaults.cardColors(
@@ -563,6 +745,315 @@ private fun StationDetailSheet(
                 modifier = Modifier.weight(1f)
             ) {
                 Text("故障")
+            }
+        }
+
+        if (photos.isNotEmpty()) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            Text(
+                text = "📷 現場位置與飲水機照片 (${photos.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(photos) { photoUri ->
+                    AsyncImage(
+                        model = photoUri,
+                        contentDescription = "取水點現場照片",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .width(140.dp)
+                            .height(105.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { enlargedPhotoUri = photoUri }
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "💬 拎水客評價與位置回報 (${reviews.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            OutlinedButton(onClick = { showReviewForm = !showReviewForm }) {
+                Icon(
+                    imageVector = Icons.Default.RateReview,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = if (showReviewForm) " 收起表單" else " ✍️ 寫評論／補拍位置圖",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+
+        if (showReviewForm) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = authorName,
+                        onValueChange = { authorName = it },
+                        label = { Text("你的暱稱（選填）") },
+                        placeholder = { Text("租屋拎水客") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "評分：",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        (1..5).forEach { star ->
+                            IconButton(
+                                onClick = { rating = star },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = "$star 星",
+                                    tint = if (star <= rating) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "快速標籤（可複選）：",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        QUICK_REVIEW_TAGS.forEach { tag ->
+                            val isSelected = tag in selectedTags
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedTags = if (isSelected) {
+                                        selectedTags - tag
+                                    } else {
+                                        selectedTags + tag
+                                    }
+                                },
+                                label = { Text(tag) }
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = comment,
+                        onValueChange = { comment = it },
+                        label = { Text("位置指引與水質心得") },
+                        placeholder = { Text("例：走進大門左轉到底茶水間，出水很快、熱水夠燙！") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onTakeReviewPhoto,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(" 📷 拍照標示位置", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick = onPickReviewPhoto,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoLibrary,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(" 🖼️ 相簿選圖", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    if (draftReviewPhotoUri != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = draftReviewPhotoUri,
+                                contentDescription = "評論附圖預覽",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            IconButton(
+                                onClick = onClearReviewPhoto,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .size(32.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                        shape = CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "移除照片",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            val finalComment = comment.trim().ifEmpty {
+                                if (selectedTags.isNotEmpty()) {
+                                    selectedTags.joinToString("、")
+                                } else {
+                                    "已完成現場取水回報"
+                                }
+                            }
+                            onSubmitReview(
+                                authorName,
+                                rating,
+                                finalComment,
+                                selectedTags.toList()
+                            )
+                            comment = ""
+                            selectedTags = emptySet()
+                            rating = 5
+                            showReviewForm = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("送出評價")
+                    }
+                }
+            }
+        }
+
+        if (reviews.isEmpty()) {
+            Text(
+                text = "目前還沒有人留下詳細評價，歡迎分享飲水機確切位置與水質心得！",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            val dateFormatter = remember {
+                SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.TAIWAN)
+            }
+            reviews.forEach { review ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = review.authorName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = dateFormatter.format(Date(review.createdAtEpochMillis)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Text(
+                            text = "★".repeat(review.rating.coerceIn(1, 5)) +
+                                "☆".repeat((5 - review.rating).coerceIn(0, 4)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFFFB300)
+                        )
+
+                        if (review.tags.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                review.tags.forEach { tag ->
+                                    AssistChip(
+                                        onClick = {},
+                                        label = {
+                                            Text(
+                                                text = tag,
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (review.comment.isNotBlank()) {
+                            Text(
+                                text = review.comment,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        if (!review.photoUri.isNullOrBlank()) {
+                            AsyncImage(
+                                model = review.photoUri,
+                                contentDescription = "評論附圖",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .width(160.dp)
+                                    .height(120.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { enlargedPhotoUri = review.photoUri }
+                            )
+                        }
+                    }
+                }
             }
         }
     }

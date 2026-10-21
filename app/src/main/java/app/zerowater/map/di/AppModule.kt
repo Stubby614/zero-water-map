@@ -3,6 +3,7 @@ package app.zerowater.map.di
 import android.content.Context
 import androidx.room.Room
 import app.zerowater.map.BuildConfig
+import app.zerowater.map.data.local.StationReviewDao
 import app.zerowater.map.data.local.WaterStationDao
 import app.zerowater.map.data.local.ZeroWaterDatabase
 import app.zerowater.map.data.remote.WaterStationApi
@@ -76,4 +77,8 @@ object AppModule {
     @Provides
     fun provideWaterStationDao(database: ZeroWaterDatabase): WaterStationDao =
         database.waterStationDao()
+
+    @Provides
+    fun provideStationReviewDao(database: ZeroWaterDatabase): StationReviewDao =
+        database.stationReviewDao()
 }

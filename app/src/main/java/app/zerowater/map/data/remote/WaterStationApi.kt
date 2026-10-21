@@ -1,5 +1,6 @@
 package app.zerowater.map.data.remote
 
+import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
 import app.zerowater.map.data.model.WaterStation
 import kotlinx.serialization.Serializable
@@ -32,4 +33,13 @@ interface WaterStationApi {
         @Path("id") stationId: String,
         @Body request: StatusReportRequest
     ): WaterStation
+
+    @GET("stations/{id}/reviews")
+    suspend fun getStationReviews(@Path("id") stationId: String): List<StationReview>
+
+    @POST("stations/{id}/reviews")
+    suspend fun createStationReview(
+        @Path("id") stationId: String,
+        @Body review: StationReview
+    ): StationReview
 }

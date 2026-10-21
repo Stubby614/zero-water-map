@@ -1,12 +1,17 @@
 package app.zerowater.map.ui.map
 
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.zerowater.map.data.local.PhotoStorageHelper
 import app.zerowater.map.data.location.AddressCandidate
 import app.zerowater.map.data.location.GeoPoint
 import app.zerowater.map.data.location.GeocodingService
 import app.zerowater.map.data.location.LocationTracker
 import app.zerowater.map.data.model.AccessType
+import app.zerowater.map.data.model.StationRatingSummary
+import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
 import app.zerowater.map.data.model.WaterStation
 import app.zerowater.map.data.repository.WaterStationRepository
@@ -48,7 +53,9 @@ private data class InteractionState(
     val addressSearchResults: List<AddressCandidate> = emptyList(),
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
-    val cameraTarget: CameraTargetEvent? = null
+    val cameraTarget: CameraTargetEvent? = null,
+    val draftStationPhotoUri: String? = null,
+    val draftReviewPhotoUri: String? = null
 )
 
 data class MapUiState(
@@ -67,7 +74,12 @@ data class MapUiState(
     val addressSearchResults: List<AddressCandidate> = emptyList(),
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
-    val cameraTarget: CameraTargetEvent? = null
+    val cameraTarget: CameraTargetEvent? = null,
+    val selectedStationReviews: List<StationReview> = emptyList(),
+    val ratingSummaries: Map<String, StationRatingSummary> = emptyMap(),
+    val selectedStationPhotos: List<String> = emptyList(),
+    val draftStationPhotoUri: String? = null,
+    val draftReviewPhotoUri: String? = null
 )
 
 @HiltViewModel
@@ -75,7 +87,8 @@ class MapViewModel @Inject constructor(
     private val repository: WaterStationRepository,
     private val locationTracker: LocationTracker,
     private val geocodingService: GeocodingService,
-    private val routeRepository: RouteRepository
+    private val routeRepository: RouteRepository,
+    private val photoStorageHelper: PhotoStorageHelper
 ) : ViewModel() {
 
     private val filterFlow = MutableStateFlow(StationFilter())
@@ -87,10 +100,11 @@ class MapViewModel @Inject constructor(
     private var cameraSeq = 0
     val uiState: StateFlow<MapUiState> = combine(
         repository.observeStations(),
+        repository.observeAllReviews(),
         filterFlow,
         selectedStationIdFlow,
         interactionFlow
-    ) { allStations, filter, selectedId, interaction ->
+    ) { allStations, allReviews, filter, selectedId, interaction ->
         val userLoc = interaction.userLocation
         val filtered = allStations.filter { station ->
             (!filter.requireHot || station.hasHot) &&
@@ -111,11 +125,31 @@ class MapViewModel @Inject constructor(
         } else {
             null
         }
+        val summaries = allReviews.groupBy { it.stationId }.mapValues { (_, reviews) ->
+            val avg = if (reviews.isEmpty()) 0f else reviews.map { it.rating }.average().toFloat()
+            StationRatingSummary(
+                averageRating = avg,
+                reviewCount = reviews.size
+            )
+        }
+
+        val selectedStation = allStations.find { it.id == selectedId }
+        val selectedReviews = if (selectedId != null) {
+            allReviews.filter { it.stationId == selectedId }
+        } else {
+            emptyList()
+        }
+        val selectedPhotos = buildList {
+            selectedStation?.photoUri?.takeIf { it.isNotBlank() }?.let { add(it) }
+            selectedReviews.forEach { review ->
+                review.photoUri?.takeIf { it.isNotBlank() }?.let { add(it) }
+            }
+        }.distinct()
 
         MapUiState(
             stations = filtered,
             filter = filter,
-            selectedStation = allStations.find { it.id == selectedId },
+            selectedStation = selectedStation,
             userLocation = userLoc,
             isLocating = interaction.isLocating,
             activeRoute = interaction.activeRoute,
@@ -128,7 +162,12 @@ class MapViewModel @Inject constructor(
             addressSearchResults = interaction.addressSearchResults,
             isSearchingAddress = interaction.isSearchingAddress,
             showAddStationSheet = interaction.showAddStationSheet,
-            cameraTarget = interaction.cameraTarget
+            cameraTarget = interaction.cameraTarget,
+            selectedStationReviews = selectedReviews,
+            ratingSummaries = summaries,
+            selectedStationPhotos = selectedPhotos,
+            draftStationPhotoUri = interaction.draftStationPhotoUri,
+            draftReviewPhotoUri = interaction.draftReviewPhotoUri
         )
     }.stateIn(
         scope = viewModelScope,
@@ -180,6 +219,7 @@ class MapViewModel @Inject constructor(
 
     fun selectStation(stationId: String?, moveCamera: Boolean = false) {
         selectedStationIdFlow.value = stationId
+        interactionFlow.update { it.copy(draftReviewPhotoUri = null) }
         if (stationId == null) {
             routeJob?.cancel()
             interactionFlow.update { it.copy(activeRoute = null, isLoadingRoute = false) }
@@ -254,7 +294,8 @@ class MapViewModel @Inject constructor(
             it.copy(
                 isPickingLocation = false,
                 showAddStationSheet = false,
-                addressSearchResults = emptyList()
+                addressSearchResults = emptyList(),
+                draftStationPhotoUri = null
             )
         }
     }
@@ -349,10 +390,71 @@ class MapViewModel @Inject constructor(
         interactionFlow.update {
             it.copy(
                 showAddStationSheet = false,
-                addressSearchResults = emptyList()
+                addressSearchResults = emptyList(),
+                draftStationPhotoUri = null
             )
         }
     }
+
+    fun onDraftStationPhotoPicked(uri: Uri) {
+        viewModelScope.launch {
+            val savedUri = photoStorageHelper.savePhotoFromUri(uri) ?: return@launch
+            interactionFlow.update { it.copy(draftStationPhotoUri = savedUri) }
+        }
+    }
+
+    fun onDraftStationCameraBitmap(bitmap: Bitmap) {
+        viewModelScope.launch {
+            val savedUri = photoStorageHelper.savePhotoFromBitmap(bitmap) ?: return@launch
+            interactionFlow.update { it.copy(draftStationPhotoUri = savedUri) }
+        }
+    }
+
+    fun clearDraftStationPhoto() {
+        interactionFlow.update { it.copy(draftStationPhotoUri = null) }
+    }
+
+    fun onDraftReviewPhotoPicked(uri: Uri) {
+        viewModelScope.launch {
+            val savedUri = photoStorageHelper.savePhotoFromUri(uri) ?: return@launch
+            interactionFlow.update { it.copy(draftReviewPhotoUri = savedUri) }
+        }
+    }
+
+    fun onDraftReviewCameraBitmap(bitmap: Bitmap) {
+        viewModelScope.launch {
+            val savedUri = photoStorageHelper.savePhotoFromBitmap(bitmap) ?: return@launch
+            interactionFlow.update { it.copy(draftReviewPhotoUri = savedUri) }
+        }
+    }
+
+    fun clearDraftReviewPhoto() {
+        interactionFlow.update { it.copy(draftReviewPhotoUri = null) }
+    }
+
+    fun addStationReview(
+        stationId: String,
+        authorName: String,
+        rating: Int,
+        comment: String,
+        tags: List<String>
+    ) {
+        val photoUri = interactionFlow.value.draftReviewPhotoUri
+        val review = StationReview(
+            id = "review-${UUID.randomUUID()}",
+            stationId = stationId,
+            authorName = authorName.trim().ifEmpty { "租屋拎水客" },
+            rating = rating.coerceIn(1, 5),
+            comment = comment.trim(),
+            tags = tags,
+            photoUri = photoUri
+        )
+        viewModelScope.launch {
+            repository.addReview(review)
+            interactionFlow.update { it.copy(draftReviewPhotoUri = null) }
+        }
+    }
+
     fun submitNewStation(
         name: String,
         floorHint: String,
@@ -365,12 +467,14 @@ class MapViewModel @Inject constructor(
         openHours: String
     ) {
         val location = interactionFlow.value.pickedLocation
+        val stationPhotoUri = interactionFlow.value.draftStationPhotoUri
+        val trimmedHint = floorHint.trim()
         val newStation = WaterStation(
             id = "user-${UUID.randomUUID()}",
             name = name.trim(),
             latitude = location.latitude,
             longitude = location.longitude,
-            floorHint = floorHint.trim().ifEmpty { "1F 飲水機" },
+            floorHint = trimmedHint.ifEmpty { "1F 飲水機" },
             accessType = accessType,
             hasHot = hasHot,
             hasWarm = hasWarm,
@@ -378,14 +482,28 @@ class MapViewModel @Inject constructor(
             hasIced = hasIced,
             is24Hours = is24Hours,
             openHours = if (is24Hours) "24 小時開放" else openHours.trim().ifEmpty { "依場館開放時間" },
-            status = StationStatus.WORKING
+            status = StationStatus.WORKING,
+            photoUri = stationPhotoUri
         )
         viewModelScope.launch {
             repository.addStation(newStation)
+            if (stationPhotoUri != null || trimmedHint.isNotEmpty()) {
+                val initialReview = StationReview(
+                    id = "review-${UUID.randomUUID()}",
+                    stationId = newStation.id,
+                    authorName = "首發通報者",
+                    rating = 5,
+                    comment = trimmedHint.ifEmpty { "新增取水點並附上現場照片" },
+                    tags = listOf("位置好找"),
+                    photoUri = stationPhotoUri
+                )
+                repository.addReview(initialReview)
+            }
             interactionFlow.update {
                 it.copy(
                     showAddStationSheet = false,
                     isPickingLocation = false,
+                    draftStationPhotoUri = null,
                     cameraTarget = CameraTargetEvent(
                         point = location,
                         zoom = 16.5,
