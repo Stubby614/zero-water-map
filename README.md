@@ -1,4 +1,4 @@
-# 拎水地圖 (Zero Water Map)
+# 拎水地圖 (0Sui Map)
 
 > 專為台灣租屋族打造的開源免費飲水機地圖 Android App —— 出門散步順便拎一壺水回家！
 
