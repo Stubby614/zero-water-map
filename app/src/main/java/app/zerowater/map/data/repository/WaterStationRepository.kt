@@ -1,5 +1,6 @@
 package app.zerowater.map.data.repository
 
+import app.zerowater.map.BuildConfig
 import app.zerowater.map.data.local.StationReviewDao
 import app.zerowater.map.data.local.StationReviewEntity
 import app.zerowater.map.data.local.WaterStationDao
@@ -44,9 +45,20 @@ class WaterStationRepository @Inject constructor(
     suspend fun syncNearby(latitude: Double, longitude: Double, radiusMeters: Int = 2000): Result<Unit> =
         runCatching {
             val remoteStations = api.getNearbyStations(latitude, longitude, radiusMeters)
-            dao.upsertAll(remoteStations.map(WaterStationEntity::fromDomain))
+            dao.insertIgnoreAll(remoteStations.map(WaterStationEntity::fromDomain))
         }
 
+    suspend fun syncFromOpenData(openDataUrl: String = BuildConfig.OPEN_DATA_URL): Result<Int> =
+        runCatching {
+            val snapshot = api.fetchOpenDataSnapshot(openDataUrl)
+            if (snapshot.stations.isNotEmpty()) {
+                dao.insertIgnoreAll(snapshot.stations.map(WaterStationEntity::fromDomain))
+            }
+            if (snapshot.reviews.isNotEmpty()) {
+                reviewDao.insertAll(snapshot.reviews.map(StationReviewEntity::fromDomain))
+            }
+            snapshot.stations.size
+        }
     suspend fun discoverNearbyFromOsm(
         latitude: Double,
         longitude: Double,

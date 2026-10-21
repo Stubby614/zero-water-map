@@ -20,6 +20,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://api.zerowater.map/v1/\"")
+        buildConfigField("String", "OPEN_DATA_URL", "\"https://raw.githubusercontent.com/Stubby614/zero-water-map/main/open-data/stations.json\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"https://tiles.openfreemap.org/styles/liberty\"")
     }
 
