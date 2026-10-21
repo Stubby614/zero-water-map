@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [WaterStationEntity::class, StationReviewEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ZeroWaterDatabase : RoomDatabase() {

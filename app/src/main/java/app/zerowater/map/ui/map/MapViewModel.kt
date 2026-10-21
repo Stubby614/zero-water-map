@@ -33,7 +33,9 @@ data class StationFilter(
     val requireHot: Boolean = false,
     val requireIced: Boolean = false,
     val noCardOnly: Boolean = false,
-    val open24HoursOnly: Boolean = false
+    val open24HoursOnly: Boolean = false,
+    val favoritesOnly: Boolean = false,
+    val searchQuery: String = ""
 )
 
 data class CameraTargetEvent(
@@ -53,6 +55,9 @@ private data class InteractionState(
     val addressSearchResults: List<AddressCandidate> = emptyList(),
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
+    val showStationListSheet: Boolean = false,
+    val isDiscoveringOsm: Boolean = false,
+    val discoveryStatusMessage: String? = null,
     val cameraTarget: CameraTargetEvent? = null,
     val draftStationPhotoUri: String? = null,
     val draftReviewPhotoUri: String? = null
@@ -74,6 +79,9 @@ data class MapUiState(
     val addressSearchResults: List<AddressCandidate> = emptyList(),
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
+    val showStationListSheet: Boolean = false,
+    val isDiscoveringOsm: Boolean = false,
+    val discoveryStatusMessage: String? = null,
     val cameraTarget: CameraTargetEvent? = null,
     val selectedStationReviews: List<StationReview> = emptyList(),
     val ratingSummaries: Map<String, StationRatingSummary> = emptyMap(),
@@ -106,11 +114,16 @@ class MapViewModel @Inject constructor(
         interactionFlow
     ) { allStations, allReviews, filter, selectedId, interaction ->
         val userLoc = interaction.userLocation
+        val query = filter.searchQuery.trim()
         val filtered = allStations.filter { station ->
             (!filter.requireHot || station.hasHot) &&
                 (!filter.requireIced || station.hasIced) &&
                 (!filter.noCardOnly || station.accessType != AccessType.RESTRICTED) &&
-                (!filter.open24HoursOnly || station.is24Hours)
+                (!filter.open24HoursOnly || station.is24Hours) &&
+                (!filter.favoritesOnly || station.isFavorite) &&
+                (query.isEmpty() ||
+                    station.name.contains(query, ignoreCase = true) ||
+                    station.floorHint.contains(query, ignoreCase = true))
         }.let { list ->
             if (userLoc != null) {
                 list.sortedBy { userLoc.distanceMetersTo(it.latitude, it.longitude) }
@@ -162,6 +175,9 @@ class MapViewModel @Inject constructor(
             addressSearchResults = interaction.addressSearchResults,
             isSearchingAddress = interaction.isSearchingAddress,
             showAddStationSheet = interaction.showAddStationSheet,
+            showStationListSheet = interaction.showStationListSheet,
+            isDiscoveringOsm = interaction.isDiscoveringOsm,
+            discoveryStatusMessage = interaction.discoveryStatusMessage,
             cameraTarget = interaction.cameraTarget,
             selectedStationReviews = selectedReviews,
             ratingSummaries = summaries,
@@ -191,6 +207,64 @@ class MapViewModel @Inject constructor(
     fun toggleNoCardFilter() = filterFlow.update { it.copy(noCardOnly = !it.noCardOnly) }
 
     fun toggle24HoursFilter() = filterFlow.update { it.copy(open24HoursOnly = !it.open24HoursOnly) }
+
+    fun toggleFavoritesFilter() = filterFlow.update { it.copy(favoritesOnly = !it.favoritesOnly) }
+
+    fun updateSearchQuery(query: String) = filterFlow.update { it.copy(searchQuery = query) }
+
+    fun openStationListSheet() {
+        interactionFlow.update { it.copy(showStationListSheet = true) }
+    }
+
+    fun dismissStationListSheet() {
+        interactionFlow.update { it.copy(showStationListSheet = false) }
+    }
+
+    fun clearDiscoveryStatusMessage() {
+        interactionFlow.update { it.copy(discoveryStatusMessage = null) }
+    }
+
+    fun discoverCurrentAreaOsmStations() {
+        if (interactionFlow.value.isDiscoveringOsm) return
+        val center = interactionFlow.value.pickedLocation
+        viewModelScope.launch {
+            interactionFlow.update {
+                it.copy(
+                    isDiscoveringOsm = true,
+                    discoveryStatusMessage = "正在搜尋方圓 3 公里內 OpenStreetMap 飲水機..."
+                )
+            }
+            val result = repository.discoverNearbyFromOsm(
+                latitude = center.latitude,
+                longitude = center.longitude,
+                radiusMeters = 3000
+            )
+            val msg = result.fold(
+                onSuccess = { count ->
+                    if (count > 0) {
+                        "成功從 OpenStreetMap 找到 $count 個周邊飲水機點位！"
+                    } else {
+                        "此區域 3 公里內暫無 OpenStreetMap 標記點位，歡迎成為第一位通報者！"
+                    }
+                },
+                onFailure = {
+                    "暫時無法連線至開放圖資伺服器，請稍後再試"
+                }
+            )
+            interactionFlow.update {
+                it.copy(
+                    isDiscoveringOsm = false,
+                    discoveryStatusMessage = msg
+                )
+            }
+        }
+    }
+
+    fun toggleStationFavorite(station: WaterStation) {
+        viewModelScope.launch {
+            repository.toggleFavorite(station.id, !station.isFavorite)
+        }
+    }
 
     fun refreshUserLocation(moveCamera: Boolean = true) {
         viewModelScope.launch {

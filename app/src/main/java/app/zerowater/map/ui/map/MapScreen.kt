@@ -34,6 +34,10 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Place
@@ -185,6 +189,11 @@ fun MapScreen(
                         fontWeight = FontWeight.Bold
                     )
                     FilterChip(
+                        selected = uiState.filter.favoritesOnly,
+                        onClick = viewModel::toggleFavoritesFilter,
+                        label = { Text("★ 已收藏") }
+                    )
+                    FilterChip(
                         selected = uiState.filter.noCardOnly,
                         onClick = viewModel::toggleNoCardFilter,
                         label = { Text("免門禁/免證件") },
@@ -208,6 +217,83 @@ fun MapScreen(
                 }
             }
 
+            // Explore nearby real OSM water stations pill & status banner
+            if (!uiState.isPickingLocation) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        modifier = Modifier.clickable(enabled = !uiState.isDiscoveringOsm) {
+                            viewModel.discoverCurrentAreaOsmStations()
+                        },
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 6.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (uiState.isDiscoveringOsm) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Explore,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Text(
+                                text = if (uiState.isDiscoveringOsm) {
+                                    "正在探索周邊飲水機..."
+                                } else {
+                                    "探索此區域真實飲水機 (OSM)"
+                                },
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+
+            uiState.discoveryStatusMessage?.let { statusMsg ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.clearDiscoveryStatusMessage() },
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    tonalElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = statusMsg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "關閉提示",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
             // Nearest station quick-jump banner when user location is available
             val nearest = uiState.nearestStation
             val nearestDist = uiState.nearestDistanceMeters
@@ -377,6 +463,19 @@ fun MapScreen(
                 }
 
                 ExtendedFloatingActionButton(
+                    onClick = viewModel::openStationListSheet,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.FormatListBulleted,
+                            contentDescription = null
+                        )
+                    },
+                    text = { Text("附近清單 (${uiState.stations.size})") }
+                )
+
+                ExtendedFloatingActionButton(
                     onClick = viewModel::openAddStationSheet,
                     icon = {
                         Icon(
@@ -447,6 +546,9 @@ fun MapScreen(
                             )
                         }
                     },
+                    onToggleFavorite = {
+                        viewModel.toggleStationFavorite(station)
+                    },
                     onReportStatus = { status ->
                         viewModel.reportStatus(station.id, status)
                     }
@@ -454,6 +556,31 @@ fun MapScreen(
             }
         }
 
+        // Nearby & Favorites List BottomSheet
+        if (uiState.showStationListSheet) {
+            ModalBottomSheet(
+                onDismissRequest = viewModel::dismissStationListSheet
+            ) {
+                StationListSheet(
+                    stations = uiState.stations,
+                    userLocation = uiState.userLocation,
+                    filter = uiState.filter,
+                    ratingSummaries = uiState.ratingSummaries,
+                    isDiscoveringOsm = uiState.isDiscoveringOsm,
+                    onSearchQueryChange = viewModel::updateSearchQuery,
+                    onToggleFavoritesFilter = viewModel::toggleFavoritesFilter,
+                    onToggleNoCardFilter = viewModel::toggleNoCardFilter,
+                    onToggleIcedFilter = viewModel::toggleIcedFilter,
+                    onToggleHotFilter = viewModel::toggleHotFilter,
+                    onDiscoverOsmClick = viewModel::discoverCurrentAreaOsmStations,
+                    onToggleStationFavorite = viewModel::toggleStationFavorite,
+                    onSelectStation = { clicked ->
+                        viewModel.dismissStationListSheet()
+                        viewModel.selectStation(clicked.id, moveCamera = true)
+                    }
+                )
+            }
+        }
         // Add New Station Form BottomSheet
         if (uiState.showAddStationSheet) {
             ModalBottomSheet(
@@ -511,6 +638,7 @@ private fun StationDetailSheet(
     onSubmitReview: (authorName: String, rating: Int, comment: String, tags: List<String>) -> Unit,
     onRequestLocation: () -> Unit,
     onNavigateClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onReportStatus: (StationStatus) -> Unit
 ) {
     var showReviewForm by remember(station.id) { mutableStateOf(false) }
@@ -566,12 +694,33 @@ private fun StationDetailSheet(
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = station.name,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = station.name,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onToggleFavorite) {
+                Icon(
+                    imageVector = if (station.isFavorite) {
+                        Icons.Default.Favorite
+                    } else {
+                        Icons.Default.FavoriteBorder
+                    },
+                    contentDescription = "收藏此取水點",
+                    tint = if (station.isFavorite) {
+                        Color(0xFFE53935)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)

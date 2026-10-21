@@ -8,6 +8,7 @@ import app.zerowater.map.data.model.AccessType
 import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
 import app.zerowater.map.data.model.WaterStation
+import app.zerowater.map.data.remote.OverpassWaterService
 import app.zerowater.map.data.remote.StatusReportRequest
 import app.zerowater.map.data.remote.WaterStationApi
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 class WaterStationRepository @Inject constructor(
     private val dao: WaterStationDao,
     private val reviewDao: StationReviewDao,
-    private val api: WaterStationApi
+    private val api: WaterStationApi,
+    private val overpassWaterService: OverpassWaterService
 ) {
     fun observeStations(): Flow<List<WaterStation>> =
         dao.observeAllActive().map { list -> list.map { it.toDomain() } }
@@ -44,6 +46,25 @@ class WaterStationRepository @Inject constructor(
             val remoteStations = api.getNearbyStations(latitude, longitude, radiusMeters)
             dao.upsertAll(remoteStations.map(WaterStationEntity::fromDomain))
         }
+
+    suspend fun discoverNearbyFromOsm(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Int = 3000
+    ): Result<Int> = overpassWaterService.fetchNearbyDrinkingWater(
+        latitude = latitude,
+        longitude = longitude,
+        radiusMeters = radiusMeters
+    ).mapCatching { discovered ->
+        if (discovered.isNotEmpty()) {
+            dao.insertIgnoreAll(discovered.map(WaterStationEntity::fromDomain))
+        }
+        discovered.size
+    }
+
+    suspend fun toggleFavorite(stationId: String, isFavorite: Boolean) {
+        dao.updateFavorite(stationId, isFavorite)
+    }
 
     suspend fun addStation(station: WaterStation) {
         dao.upsert(WaterStationEntity.fromDomain(station))
