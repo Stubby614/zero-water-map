@@ -1,0 +1,17 @@
+{
+  "name": "拎水地圖 Zero Water Map",
+  "short_name": "拎水地圖",
+  "description": "全台灣公共飲水機地圖，支援水溫分類、步行導航、現場評價與離線同步",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1E88E5",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

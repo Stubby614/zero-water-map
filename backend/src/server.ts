@@ -26,6 +26,7 @@ export interface StationReview {
   id: string;
   stationId: string;
   authorName: string;
+  userName?: string;
   rating: number;
   comment: string;
   tags: string[];
@@ -45,7 +46,15 @@ export interface OpenWaterDataset {
 const DATA_FILE_PATH = resolve(
   process.env.OPEN_DATA_PATH ?? resolve(import.meta.dir, "../../open-data/stations.json")
 );
-
+const GEOJSON_FILE_PATH = resolve(
+  process.env.OPEN_DATA_GEOJSON_PATH ?? resolve(import.meta.dir, "../../open-data/stations.geojson")
+);
+const ANDROID_ASSETS_PATH = resolve(
+  import.meta.dir,
+  "../../app/src/main/assets/taiwan_water_stations.json"
+);
+const WEB_DIR = resolve(import.meta.dir, "../../web");
+const WEB_DATA_PATH = resolve(WEB_DIR, "stations.json");
 function loadInitialDataset(): OpenWaterDataset {
   if (existsSync(DATA_FILE_PATH)) {
     const raw = readFileSync(DATA_FILE_PATH, "utf-8");
@@ -65,10 +74,31 @@ const dataset: OpenWaterDataset = loadInitialDataset();
 
 function persistSnapshotBestEffort() {
   dataset.updatedAt = new Date().toISOString();
+  const jsonStr = JSON.stringify(dataset, null, 2) + "\n";
   try {
-    writeFileSync(DATA_FILE_PATH, JSON.stringify(dataset, null, 2) + "\n", "utf-8");
+    writeFileSync(DATA_FILE_PATH, jsonStr, "utf-8");
   } catch {
     // On read-only container filesystems (e.g. Cloud Run without mounted volume), keep in-memory state
+  }
+  try {
+    const geoJson = toGeoJsonFeatureCollection(dataset.stations);
+    writeFileSync(GEOJSON_FILE_PATH, JSON.stringify(geoJson, null, 2) + "\n", "utf-8");
+  } catch {
+    // Best-effort
+  }
+  try {
+    if (existsSync(ANDROID_ASSETS_PATH)) {
+      writeFileSync(ANDROID_ASSETS_PATH, jsonStr, "utf-8");
+    }
+  } catch {
+    // Best-effort
+  }
+  try {
+    if (existsSync(WEB_DIR)) {
+      writeFileSync(WEB_DATA_PATH, jsonStr, "utf-8");
+    }
+  } catch {
+    // Best-effort
   }
 }
 
@@ -159,6 +189,63 @@ export async function handleRequest(req: Request, clientIp = "127.0.0.1"): Promi
 
   const url = new URL(req.url);
   const path = url.pathname;
+
+  // 0. Static Web App Files (PWA)
+  if (req.method === "GET") {
+    if (path === "/" || path === "/index.html") {
+      const indexPath = resolve(WEB_DIR, "index.html");
+      if (existsSync(indexPath)) {
+        return new Response(readFileSync(indexPath, "utf-8"), {
+          headers: { "Content-Type": "text/html; charset=utf-8", ...CORS_HEADERS },
+        });
+      }
+    }
+    if (path === "/styles.css") {
+      const cssPath = resolve(WEB_DIR, "styles.css");
+      if (existsSync(cssPath)) {
+        return new Response(readFileSync(cssPath, "utf-8"), {
+          headers: { "Content-Type": "text/css; charset=utf-8", ...CORS_HEADERS },
+        });
+      }
+    }
+    if (path === "/app.js") {
+      const jsPath = resolve(WEB_DIR, "app.js");
+      if (existsSync(jsPath)) {
+        return new Response(readFileSync(jsPath, "utf-8"), {
+          headers: { "Content-Type": "application/javascript; charset=utf-8", ...CORS_HEADERS },
+        });
+      }
+    }
+    if (path === "/manifest.webmanifest" || path === "/manifest.json") {
+      const manifestPath = resolve(WEB_DIR, "manifest.webmanifest");
+      if (existsSync(manifestPath)) {
+        return new Response(readFileSync(manifestPath, "utf-8"), {
+          headers: { "Content-Type": "application/manifest+json; charset=utf-8", ...CORS_HEADERS },
+        });
+      }
+    }
+    if (path === "/stations.json") {
+      return jsonResponse(dataset, 200, {
+        "Cache-Control": "public, max-age=300",
+      });
+    }
+    if (path.startsWith("/icons/") || path.endsWith(".png") || path.endsWith(".svg") || path.endsWith(".ico")) {
+      const filePath = resolve(WEB_DIR, "." + path);
+      if (existsSync(filePath)) {
+        const ext = path.split(".").pop()?.toLowerCase();
+        const mimeMap: Record<string, string> = {
+          svg: "image/svg+xml",
+          png: "image/png",
+          ico: "image/x-icon",
+          webp: "image/webp",
+        };
+        const mime = ext ? mimeMap[ext] ?? "application/octet-stream" : "application/octet-stream";
+        return new Response(readFileSync(filePath), {
+          headers: { "Content-Type": mime, ...CORS_HEADERS },
+        });
+      }
+    }
+  }
 
   // 1. Health check (Cloud Run readiness/liveness probe)
   if (req.method === "GET" && path === "/healthz") {
@@ -294,10 +381,12 @@ export async function handleRequest(req: Request, clientIp = "127.0.0.1"): Promi
       if (!body || typeof body.rating !== "number" || body.rating < 1 || body.rating > 5) {
         return jsonResponse({ error: "Rating must be between 1 and 5" }, 400);
       }
+      const author = (body.authorName ?? (body as Record<string, unknown>).userName ?? "租屋拎水客").toString().trim().slice(0, 50) || "租屋拎水客";
       const createdReview: StationReview = {
         id: body.id && body.id.trim().length > 0 ? body.id.trim() : `review-${crypto.randomUUID()}`,
         stationId,
-        authorName: (body.authorName ?? "租屋拎水客").trim().slice(0, 50) || "租屋拎水客",
+        authorName: author,
+        userName: author,
         rating: Math.round(body.rating),
         comment: (body.comment ?? "").trim().slice(0, 1000),
         tags: Array.isArray(body.tags) ? body.tags.map(String).slice(0, 10) : [],
