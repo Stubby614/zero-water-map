@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>拎水地圖 Zero Water Map - 全台公共飲水機地圖</title>
+  <meta name="description" content="全台灣公共飲水機開放地圖，提供水溫標示、步行導航、現場照片與即時水況回報">
+  <meta name="theme-color" content="#1E88E5">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Center Crosshair for Adding Station -->
+    <div id="center-crosshair" class="hidden">
+      <div class="crosshair-icon">📍</div>
+      <div class="crosshair-tip">將十字對準飲水機實際位置</div>
+    </div>
+
+    <!-- Top Floating Header & Filter Chips -->
+    <header id="top-bar">
+      <div class="top-row">
+        <div class="brand-capsule">
+          <img src="icons/icon.svg" alt="logo" class="brand-logo">
+          <span class="brand-title">拎水地圖</span>
+          <span id="station-count-badge" class="count-badge">0</span>
+        </div>
+
+        <button id="legend-btn" class="legend-capsule" title="設定圖釘顏色">
+          <span class="legend-dot dot-iced" id="dot-iced-legend"></span>
+          <span class="legend-label">冰溫熱</span>
+          <span class="legend-dot dot-warm" id="dot-warm-legend"></span>
+          <span class="legend-label">溫熱水</span>
+          <span class="legend-dot dot-hot" id="dot-hot-legend"></span>
+          <span class="legend-label">熱水</span>
+          <span class="legend-icon">🎨</span>
+        </button>
+      </div>
+
+      <!-- Scrollable Filter Chips -->
+      <div class="filter-scroll-container">
+        <button class="filter-chip" data-filter="favorite" id="chip-fav">★ 已收藏</button>
+        <button class="filter-chip" data-filter="public" id="chip-public">免門禁/免證件</button>
+        <button class="filter-chip" data-filter="iced" id="chip-iced">有冰水</button>
+        <button class="filter-chip" data-filter="hot" id="chip-hot">有熱水 (泡麵)</button>
+        <button class="filter-chip" data-filter="24h" id="chip-24h">24H 開放</button>
+        <button class="filter-chip chip-action" id="chip-explore-osm">🔍 探索此區域真實飲水機 (OSM)</button>
+      </div>
+
+      <!-- Realtime Feedback Banners -->
+      <div id="osm-banner" class="status-banner hidden"></div>
+      <div id="nearest-banner" class="nearest-banner hidden">
+        <div class="nearest-info">
+          <span class="nearest-label">最近取水點</span>
+          <span id="nearest-name" class="nearest-title">載入中...</span>
+          <span id="nearest-distance" class="nearest-dist">-- m</span>
+        </div>
+        <button id="btn-nearest-go" class="btn-sm btn-primary">查看</button>
+      </div>
+    </header>
+
+    <!-- Floating Action Buttons (Right / Bottom Right) -->
+    <div id="floating-actions">
+      <button id="btn-zoom-in" class="fab fab-circle" title="放大地圖">＋</button>
+      <button id="btn-zoom-out" class="fab fab-circle" title="縮小地圖">－</button>
+      <button id="btn-locate" class="fab fab-circle fab-accent" title="定位我的位置">📍</button>
+      <button id="btn-open-list" class="fab fab-extended">
+        <span class="fab-icon">📋</span>
+        <span class="fab-text">附近清單</span>
+        <span id="list-badge" class="badge-mini">0</span>
+      </button>
+      <button id="btn-open-add" class="fab fab-extended fab-primary">
+        <span class="fab-icon">➕</span>
+        <span class="fab-text">新增飲水機</span>
+      </button>
+    </div>
+
+    <!-- Backdrop Overlay for Sheets/Modals -->
+    <div id="backdrop" class="backdrop hidden"></div>
+
+    <!-- 1. Detail Bottom Sheet -->
+    <section id="detail-sheet" class="bottom-sheet hidden" aria-label="飲水機詳情">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title-group">
+          <div class="station-status-capsule" id="detail-status-capsule">正常出水</div>
+          <h2 id="detail-name" class="sheet-title">飲水機名稱</h2>
+        </div>
+        <div class="sheet-header-actions">
+          <button id="btn-toggle-favorite" class="btn-icon" title="收藏飲水機">🤍</button>
+          <button id="btn-close-detail" class="btn-icon" title="關閉">✕</button>
+        </div>
+      </div>
+
+      <div class="sheet-body">
+        <!-- Tags & Attributes -->
+        <div class="station-meta-tags" id="detail-tags">
+          <!-- Dynamically populated: Temp, Floor, Access, 24H, Open Hours -->
+        </div>
+
+        <!-- Walking Route Card -->
+        <div id="route-card" class="route-card hidden">
+          <div class="route-icon">🚶</div>
+          <div class="route-content">
+            <div class="route-header">步行導航路線 (OSRM)</div>
+            <div class="route-summary" id="route-summary">距離約 150m，步行約 2 分鐘</div>
+          </div>
+          <a id="btn-google-nav" class="btn-sm btn-outline" target="_blank" rel="noopener">Google 導航</a>
+        </div>
+
+        <!-- Action Row: Report Status & Share -->
+        <div class="detail-action-bar">
+          <button id="btn-report-status" class="btn btn-secondary">🚨 回報機況</button>
+          <button id="btn-share-station" class="btn btn-secondary">🔗 分享點位</button>
+        </div>
+
+        <!-- Status Report Panel (Collapsed by default) -->
+        <div id="status-report-panel" class="status-panel hidden">
+          <div class="panel-title">回報當前運作狀態：</div>
+          <div class="status-options">
+            <button class="status-btn" data-status="WORKING">✅ 正常供水中</button>
+            <button class="status-btn" data-status="FILTER_EXPIRED">⚠️ 濾心亮紅燈</button>
+            <button class="status-btn" data-status="OUT_OF_ORDER">❌ 故障／停止出水</button>
+          </div>
+        </div>
+
+        <!-- Photo Gallery -->
+        <div class="section-title">現場照片</div>
+        <div id="photo-gallery" class="photo-gallery">
+          <div class="no-photo-hint">尚無照片，歡迎在下方新增評價時上傳！</div>
+        </div>
+
+        <!-- Reviews Section -->
+        <div class="section-title-row">
+          <div class="section-title">使用評價與水質回報</div>
+          <div id="rating-summary-badge" class="rating-summary">⭐ 5.0 (0 則)</div>
+        </div>
+
+        <!-- Add Review Form -->
+        <form id="add-review-form" class="review-form">
+          <div class="form-row">
+            <label>評分：</label>
+            <div class="star-rating" id="star-input">
+              <span class="star active" data-val="1">★</span>
+              <span class="star active" data-val="2">★</span>
+              <span class="star active" data-val="3">★</span>
+              <span class="star active" data-val="4">★</span>
+              <span class="star active" data-val="5">★</span>
+            </div>
+          </div>
+
+          <div class="quick-tags-container" id="quick-tags-container">
+            <!-- Populated from QUICK_REVIEW_TAGS -->
+          </div>
+
+          <div class="form-row">
+            <input type="text" id="review-author" class="form-input" placeholder="您的暱稱 (預設: 租屋拎水客)" maxlength="30">
+          </div>
+
+          <div class="form-row">
+            <textarea id="review-comment" class="form-input" rows="2" placeholder="備註或飲水機使用心得 (例如: 出水很大、濾心剛換、有杯架...)" maxlength="500"></textarea>
+          </div>
+
+          <div class="form-row file-upload-row">
+            <label class="btn-file-upload">
+              📷 上傳現場照片
+              <input type="file" id="review-photo-input" accept="image/*">
+            </label>
+            <div id="review-photo-preview" class="photo-preview hidden">
+              <img id="review-preview-img" src="" alt="預覽照片">
+              <button type="button" id="btn-remove-review-photo" class="btn-remove-photo">✕</button>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-submit-review" class="btn btn-primary btn-block">送出評價與照片</button>
+        </form>
+
+        <!-- Existing Reviews List -->
+        <div id="reviews-list" class="reviews-list">
+          <!-- Dynamically inserted review cards -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Station List Bottom Sheet -->
+    <section id="list-sheet" class="bottom-sheet hidden" aria-label="飲水機清單">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">附近飲水機清單</h2>
+        <button id="btn-close-list" class="btn-icon" title="關閉">✕</button>
+      </div>
+
+      <div class="sheet-search-bar">
+        <input type="search" id="list-search-input" class="form-input" placeholder="搜尋名稱、地址或樓層 (例如: 台北車站, 2F)...">
+      </div>
+
+      <div class="list-filter-row">
+        <button class="list-tab-chip active" data-tab="all">全部</button>
+        <button class="list-tab-chip" data-tab="favorite">★ 收藏</button>
+        <button class="list-tab-chip" data-tab="iced">冰溫熱</button>
+        <button class="list-tab-chip" data-tab="warm">溫熱水</button>
+        <button class="list-tab-chip" data-tab="hot">純熱水</button>
+      </div>
+
+      <div id="station-list-items" class="station-list-container">
+        <!-- Dynamically rendered list items -->
+      </div>
+    </section>
+
+    <!-- 3. Add Station Bottom Sheet -->
+    <section id="add-sheet" class="bottom-sheet hidden" aria-label="新增飲水機">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">回報新增飲水機</h2>
+        <button id="btn-close-add" class="btn-icon" title="關閉">✕</button>
+      </div>
+
+      <div class="sheet-body">
+        <div class="location-picker-box">
+          <div class="picker-header">
+            <span>📍 點位座標與地址：</span>
+            <button id="btn-use-my-location" class="btn-sm btn-outline">使用 GPS 定位</button>
+          </div>
+          <div class="picker-coords" id="picker-coords-text">經度: -- , 緯度: --</div>
+          <div class="picker-address" id="picker-address-text">正在取得門牌地址...</div>
+          <div class="picker-search-row">
+            <input type="text" id="add-address-search" class="form-input" placeholder="或輸入地址/地標搜尋定位 (例: 大安森林公園)...">
+            <button id="btn-search-address" class="btn-sm btn-secondary">搜尋</button>
+          </div>
+        </div>
+
+        <form id="add-station-form">
+          <div class="form-group">
+            <label class="form-label" for="add-name">飲水機名稱 *</label>
+            <input type="text" id="add-name" class="form-input" required placeholder="例如: 台北車站 西區 1F 飲水機" maxlength="80">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="add-floor">樓層與位置提示</label>
+            <input type="text" id="add-floor" class="form-input" placeholder="例如: 1F 西剪票口旁、近女廁" maxlength="120">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">開放使用權限</label>
+            <select id="add-access" class="form-input">
+              <option value="PUBLIC">公開自由出入 (無門禁無證件要求)</option>
+              <option value="SEMI_PUBLIC">半公開 (需登記換證或營業消費)</option>
+              <option value="RESTRICTED">受限管制區 (僅特定員工或學員)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">水溫提供項目</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" id="add-temp-iced" checked> ❄️ 冰水</label>
+              <label class="checkbox-item"><input type="checkbox" id="add-temp-cold" checked> 💧 常溫冷水</label>
+              <label class="checkbox-item"><input type="checkbox" id="add-temp-warm" checked> 🍵 溫水</label>
+              <label class="checkbox-item"><input type="checkbox" id="add-temp-hot" checked> ♨️ 熱水 (可泡麵)</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="add-hours">開放時間</label>
+            <input type="text" id="add-hours" class="form-input" placeholder="例如: 08:00 - 21:00 / 依場館公告" maxlength="60">
+            <label class="checkbox-item mt-1">
+              <input type="checkbox" id="add-is-24h"> 🕒 24 小時全天候開放
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">現場照片 (選填，自動壓縮優化)</label>
+            <label class="btn-file-upload">
+              📷 選擇飲水機現場照片
+              <input type="file" id="add-photo-input" accept="image/*">
+            </label>
+            <div id="add-photo-preview" class="photo-preview hidden">
+              <img id="add-preview-img" src="" alt="飲水機照片預覽">
+              <button type="button" id="btn-remove-add-photo" class="btn-remove-photo">✕</button>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-submit-station" class="btn btn-primary btn-block">確認新增並發布</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 4. Marker Color Settings Modal -->
+    <div id="color-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="地圖圖釘顏色設定">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">🎨 地圖圖釘顏色設定</h3>
+          <button id="btn-close-color" class="btn-icon">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">可依個人喜好自訂三種水溫等級在地圖上的顯示顏色：</p>
+
+          <div class="color-setting-item">
+            <div class="color-setting-title">
+              <span class="preview-dot" id="dot-iced-preview"></span>
+              <strong>含冰水（冰／溫／熱）</strong>
+            </div>
+            <div class="palette-grid" data-category="ICED_TRIPLE" id="palette-iced">
+              <!-- 8 colors -->
+            </div>
+          </div>
+
+          <div class="color-setting-item">
+            <div class="color-setting-title">
+              <span class="preview-dot" id="dot-warm-preview"></span>
+              <strong>溫熱水（溫水＋熱水）</strong>
+            </div>
+            <div class="palette-grid" data-category="WARM_HOT" id="palette-warm">
+              <!-- 8 colors -->
+            </div>
+          </div>
+
+          <div class="color-setting-item">
+            <div class="color-setting-title">
+              <span class="preview-dot" id="dot-hot-preview"></span>
+              <strong>純熱水／單溫</strong>
+            </div>
+            <div class="palette-grid" data-category="HOT_OR_SINGLE" id="palette-hot">
+              <!-- 8 colors -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-reset-colors" class="btn btn-secondary">恢復預設值</button>
+          <button id="btn-confirm-colors" class="btn btn-primary">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Full Photo Viewer Modal -->
+    <div id="photo-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="photo-viewer-card">
+        <button id="btn-close-photo" class="btn-icon-overlay">✕</button>
+        <img id="photo-viewer-img" src="" alt="全螢幕照片">
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Copy open-data seed & backend source
 COPY open-data ./open-data
+COPY web ./web
 COPY backend/package.json ./backend/package.json
 COPY backend/src ./backend/src
 
@@ -12,6 +13,7 @@ WORKDIR /app/backend
 ENV NODE_ENV=production
 ENV PORT=8080
 ENV OPEN_DATA_PATH=/app/open-data/stations.json
+ENV WEB_DIR=/app/web
 
 EXPOSE 8080
 
