@@ -15,7 +15,7 @@ val QUICK_REVIEW_TAGS = listOf(
 data class StationReview(
     val id: String,
     val stationId: String,
-    val authorName: String,
+    val authorName: String = "匿名好心人",
     val rating: Int,
     val comment: String,
     val tags: List<String> = emptyList(),

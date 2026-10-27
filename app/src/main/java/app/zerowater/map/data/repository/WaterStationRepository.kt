@@ -44,12 +44,14 @@ class WaterStationRepository @Inject constructor(
             val content = stream.bufferedReader().use { it.readText() }
             json.decodeFromString<OpenWaterDatasetDto>(content)
         }
+    }.onFailure {
+        android.util.Log.e("ZeroWater", "Failed loading bundled stations", it)
     }.getOrNull()
 
     suspend fun ensureSeedDataLoaded() {
         val bundled = loadBundledTaiwanStations()
         val stationsToSeed = bundled?.stations?.takeIf { it.isNotEmpty() } ?: defaultTaiwanSeedStations()
-        val reviewsToSeed = bundled?.reviews?.takeIf { it.isNotEmpty() } ?: defaultSeedReviews()
+        val reviewsToSeed = bundled?.reviews?.map { it.toDomain() }?.takeIf { it.isNotEmpty() } ?: defaultSeedReviews()
 
         if (dao.count() < stationsToSeed.size) {
             dao.insertIgnoreAll(stationsToSeed.map(WaterStationEntity::fromDomain))
@@ -72,7 +74,7 @@ class WaterStationRepository @Inject constructor(
                 dao.insertIgnoreAll(snapshot.stations.map(WaterStationEntity::fromDomain))
             }
             if (snapshot.reviews.isNotEmpty()) {
-                reviewDao.insertAll(snapshot.reviews.map(StationReviewEntity::fromDomain))
+                reviewDao.insertAll(snapshot.reviews.map { it.toDomain() }.map(StationReviewEntity::fromDomain))
             }
             snapshot.stations.size
         }

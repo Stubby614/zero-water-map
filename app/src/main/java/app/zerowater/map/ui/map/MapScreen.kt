@@ -32,6 +32,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
@@ -96,6 +98,8 @@ import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.maps.MapLibreMap
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -103,6 +107,7 @@ fun MapScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -163,6 +168,7 @@ fun MapScreen(
             onStationClick = { viewModel.selectStation(it.id, moveCamera = false) },
             onCameraCenterChanged = viewModel::onMapCameraIdle,
             markerColorConfig = uiState.markerColorConfig,
+            onMapReady = { mapInstance = it },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -506,6 +512,41 @@ fun MapScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Floating Map Zoom In / Zoom Out Controls
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 6.dp,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(
+                            onClick = { mapInstance?.animateCamera(CameraUpdateFactory.zoomIn()) },
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "放大地圖",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.width(30.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        IconButton(
+                            onClick = { mapInstance?.animateCamera(CameraUpdateFactory.zoomOut()) },
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "縮小地圖",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
                 FloatingActionButton(
                     onClick = {
                         locationPermissionLauncher.launch(

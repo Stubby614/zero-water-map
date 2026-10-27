@@ -29,6 +29,7 @@ import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 
 @Composable
@@ -43,7 +44,8 @@ fun MapLibreView(
     modifier: Modifier = Modifier,
     markerColorConfig: MarkerColorConfig = MarkerColorConfig(),
     initialCenter: LatLng = LatLng(25.0375, 121.5320),
-    initialZoom: Double = 13.5
+    initialZoom: Double = 13.5,
+    onMapReady: ((MapLibreMap) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -85,6 +87,13 @@ fun MapLibreView(
                     .target(initialCenter)
                     .zoom(initialZoom)
                     .build()
+                map.uiSettings.isZoomGesturesEnabled = true
+                map.uiSettings.isScrollGesturesEnabled = true
+                map.uiSettings.isDoubleTapGesturesEnabled = true
+                map.uiSettings.isQuickZoomGesturesEnabled = true
+                map.uiSettings.isRotateGesturesEnabled = true
+                map.uiSettings.isTiltGesturesEnabled = true
+                onMapReady?.invoke(map)
                 map.addOnCameraIdleListener {
                     val target = map.cameraPosition.target
                     if (target != null) {

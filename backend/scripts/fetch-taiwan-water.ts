@@ -24,6 +24,7 @@ interface StationReview {
   stationId: string;
   userId: string;
   userName: string;
+  authorName: string;
   rating: number;
   comment: string;
   tags: string[];
@@ -794,6 +795,7 @@ const CURATED_REVIEWS: StationReview[] = [
     stationId: "tpe-main-station-b1",
     userId: "user-taipei-commuter",
     userName: "北捷通勤小資",
+    authorName: "北捷通勤小資",
     rating: 5,
     comment: "水溫非常正常，水量也很大，常常在轉乘淡水線前來裝滿一整壺水！",
     tags: ["出水量大", "水質甘甜", "標示清楚"],
@@ -805,6 +807,7 @@ const CURATED_REVIEWS: StationReview[] = [
     stationId: "tpe-library-daan",
     userId: "user-daan-reader",
     userName: "大安自修族",
+    authorName: "大安自修族",
     rating: 5,
     comment: "這台有冰水！夏天讀書必備，免換證就能從大門走進去裝水，冷度很夠。",
     tags: ["有冰水", "安靜乾淨", "水溫適中"],
@@ -816,6 +819,7 @@ const CURATED_REVIEWS: StationReview[] = [
     stationId: "txg-station-main-2f",
     userId: "user-taichung-traveler",
     userName: "台中旅人",
+    authorName: "台中旅人",
     rating: 5,
     comment: "2F 穿堂的飲水機維護得很好，熱水夠燙泡麵沒問題，也有冰水可以喝。",
     tags: ["有冰水", "水溫適中", "位置好找"],

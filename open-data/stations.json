@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-10-27T05:54:57.954Z",
+  "updatedAt": "2026-10-27T06:11:30.744Z",
   "license": "CC-BY-4.0",
   "source": "Zero Water Map (拎水地圖) Open Data — https://github.com/Stubby614/zero-water-map",
   "stations": [
@@ -19,7 +19,7 @@
       "openHours": "06:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tpe-library-daan",
@@ -36,7 +36,7 @@
       "openHours": "08:30 - 21:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ntu-total-library-b1",
@@ -53,7 +53,7 @@
       "openHours": "08:00 - 22:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "daan-park-service-center",
@@ -70,7 +70,7 @@
       "openHours": "24 小時開放",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tpe-songshan-station-1f",
@@ -87,7 +87,7 @@
       "openHours": "05:30 - 23:50",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tpe-nangang-station-b2",
@@ -104,7 +104,7 @@
       "openHours": "06:00 - 23:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ntpc-banqiao-station-1f",
@@ -121,7 +121,7 @@
       "openHours": "06:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ntpc-banqiao-cityhall-1f",
@@ -138,7 +138,7 @@
       "openHours": "08:00 - 18:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ntpc-library-banqiao-main",
@@ -155,7 +155,7 @@
       "openHours": "08:30 - 21:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ntpc-tamsui-mrt-1f",
@@ -172,7 +172,7 @@
       "openHours": "06:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ty-station-old-front",
@@ -189,7 +189,7 @@
       "openHours": "05:00 - 23:50",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ty-main-library-1f",
@@ -206,7 +206,7 @@
       "openHours": "08:30 - 21:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ty-hsr-station-1f",
@@ -223,7 +223,7 @@
       "openHours": "06:00 - 23:45",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "hsinchu-station-main-hall",
@@ -240,7 +240,7 @@
       "openHours": "05:30 - 23:40",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "hsinchu-hsr-station-1f",
@@ -257,7 +257,7 @@
       "openHours": "06:00 - 23:45",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "nthu-main-library-1f",
@@ -274,7 +274,7 @@
       "openHours": "08:00 - 22:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "miaoli-station-1f",
@@ -291,7 +291,7 @@
       "openHours": "05:30 - 23:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "txg-station-main-2f",
@@ -308,7 +308,7 @@
       "openHours": "05:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "txg-hsr-station-2f",
@@ -325,7 +325,7 @@
       "openHours": "05:40 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "txg-public-library-1f",
@@ -342,7 +342,7 @@
       "openHours": "09:00 - 21:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "txg-nchu-library-1f",
@@ -359,7 +359,7 @@
       "openHours": "08:00 - 22:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ch-station-1f",
@@ -376,7 +376,7 @@
       "openHours": "05:00 - 23:50",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "nantou-county-hall-1f",
@@ -393,7 +393,7 @@
       "openHours": "08:00 - 17:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "douliu-station-2f",
@@ -410,7 +410,7 @@
       "openHours": "05:20 - 23:40",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "chiayi-station-1f",
@@ -427,7 +427,7 @@
       "openHours": "05:00 - 23:50",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tainan-station-main-1f",
@@ -444,7 +444,7 @@
       "openHours": "05:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tainan-hsr-station-1f",
@@ -461,7 +461,7 @@
       "openHours": "06:00 - 23:45",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tainan-main-library-1f",
@@ -478,7 +478,7 @@
       "openHours": "08:30 - 21:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "ncku-library-1f",
@@ -495,7 +495,7 @@
       "openHours": "08:00 - 22:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "kh-station-b2",
@@ -512,7 +512,7 @@
       "openHours": "05:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "kh-zuoying-hsr-2f",
@@ -529,7 +529,7 @@
       "openHours": "05:45 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "kh-main-library-1f",
@@ -546,7 +546,7 @@
       "openHours": "10:00 - 22:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "pingtung-station-1f",
@@ -563,7 +563,7 @@
       "openHours": "05:00 - 23:45",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "pingtung-main-library-1f",
@@ -580,7 +580,7 @@
       "openHours": "09:00 - 21:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "yilan-station-1f",
@@ -597,7 +597,7 @@
       "openHours": "05:30 - 23:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "luodong-station-2f",
@@ -614,7 +614,7 @@
       "openHours": "05:20 - 23:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "hualien-station-3f",
@@ -631,7 +631,7 @@
       "openHours": "05:00 - 24:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "taitung-station-1f",
@@ -648,7 +648,7 @@
       "openHours": "05:20 - 23:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tpe-longshan-temple-service",
@@ -665,7 +665,7 @@
       "openHours": "06:00 - 22:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "txg-dajia-jenn-lann-temple",
@@ -682,7 +682,7 @@
       "openHours": "06:00 - 21:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tpe-elephant-mountain-trail-start",
@@ -699,7 +699,7 @@
       "openHours": "24 小時開放",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "tpe-yangmingshan-visitor-center",
@@ -716,7 +716,7 @@
       "openHours": "09:00 - 16:30",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     },
     {
       "id": "sun-moon-lake-xiangshan-visitor",
@@ -733,7 +733,7 @@
       "openHours": "09:00 - 17:00",
       "status": "WORKING",
       "photoUri": null,
-      "lastVerifiedEpochMillis": 1793080489948
+      "lastVerifiedEpochMillis": 1793081482734
     }
   ],
   "reviews": [
@@ -742,6 +742,7 @@
       "stationId": "tpe-main-station-b1",
       "userId": "user-taipei-commuter",
       "userName": "北捷通勤小資",
+      "authorName": "北捷通勤小資",
       "rating": 5,
       "comment": "水溫非常正常，水量也很大，常常在轉乘淡水線前來裝滿一整壺水！",
       "tags": [
@@ -750,13 +751,14 @@
         "標示清楚"
       ],
       "photoUri": null,
-      "createdAtEpochMillis": 1792907689948
+      "createdAtEpochMillis": 1792908682734
     },
     {
       "id": "rev-seed-tpe-2",
       "stationId": "tpe-library-daan",
       "userId": "user-daan-reader",
       "userName": "大安自修族",
+      "authorName": "大安自修族",
       "rating": 5,
       "comment": "這台有冰水！夏天讀書必備，免換證就能從大門走進去裝水，冷度很夠。",
       "tags": [
@@ -765,13 +767,14 @@
         "水溫適中"
       ],
       "photoUri": null,
-      "createdAtEpochMillis": 1792648489948
+      "createdAtEpochMillis": 1792649482734
     },
     {
       "id": "rev-seed-txg-1",
       "stationId": "txg-station-main-2f",
       "userId": "user-taichung-traveler",
       "userName": "台中旅人",
+      "authorName": "台中旅人",
       "rating": 5,
       "comment": "2F 穿堂的飲水機維護得很好，熱水夠燙泡麵沒問題，也有冰水可以喝。",
       "tags": [
@@ -780,7 +783,7 @@
         "位置好找"
       ],
       "photoUri": null,
-      "createdAtEpochMillis": 1792821289948
+      "createdAtEpochMillis": 1792822282734
     }
   ]
 }
