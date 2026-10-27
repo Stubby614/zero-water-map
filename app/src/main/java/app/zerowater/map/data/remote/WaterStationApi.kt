@@ -17,12 +17,36 @@ data class StatusReportRequest(
 )
 
 @Serializable
+data class OpenWaterReviewDto(
+    val id: String,
+    val stationId: String,
+    val authorName: String = "",
+    val userName: String = "",
+    val rating: Int = 5,
+    val comment: String = "",
+    val tags: List<String> = emptyList(),
+    val photoUri: String? = null,
+    val createdAtEpochMillis: Long = System.currentTimeMillis()
+) {
+    fun toDomain(): StationReview = StationReview(
+        id = id,
+        stationId = stationId,
+        authorName = authorName.ifBlank { userName.ifBlank { "匿名好心人" } },
+        rating = rating,
+        comment = comment,
+        tags = tags,
+        photoUri = photoUri,
+        createdAtEpochMillis = createdAtEpochMillis
+    )
+}
+
+@Serializable
 data class OpenWaterDatasetDto(
     val version: Int = 1,
     val updatedAt: String = "",
     val license: String = "CC-BY-4.0",
     val stations: List<WaterStation> = emptyList(),
-    val reviews: List<StationReview> = emptyList()
+    val reviews: List<OpenWaterReviewDto> = emptyList()
 )
 
 interface WaterStationApi {

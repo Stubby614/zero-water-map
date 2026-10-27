@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
@@ -42,6 +45,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AssistChip
@@ -94,6 +98,8 @@ import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.maps.MapLibreMap
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -101,6 +107,7 @@ fun MapScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -160,6 +167,8 @@ fun MapScreen(
             cameraTarget = uiState.cameraTarget,
             onStationClick = { viewModel.selectStation(it.id, moveCamera = false) },
             onCameraCenterChanged = viewModel::onMapCameraIdle,
+            markerColorConfig = uiState.markerColorConfig,
+            onMapReady = { mapInstance = it },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -216,6 +225,72 @@ fun MapScreen(
                     )
                 }
             }
+            // Temperature Color Legend Capsule (clickable -> opens MarkerColorSettingsSheet)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Surface(
+                    modifier = Modifier.clickable { viewModel.openColorSettingsSheet() },
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    tonalElevation = 5.dp,
+                    shadowElevation = 5.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(android.graphics.Color.parseColor(uiState.markerColorConfig.icedColorHex)))
+                                    .border(1.dp, Color.White, CircleShape)
+                            )
+                            Text("冰溫熱", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(android.graphics.Color.parseColor(uiState.markerColorConfig.warmHotColorHex)))
+                                    .border(1.dp, Color.White, CircleShape)
+                            )
+                            Text("溫熱水", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(android.graphics.Color.parseColor(uiState.markerColorConfig.hotOnlyColorHex)))
+                                    .border(1.dp, Color.White, CircleShape)
+                            )
+                            Text("熱水/單溫", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = "自訂圖釘顏色",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
 
             // Explore nearby real OSM water stations pill & status banner
             if (!uiState.isPickingLocation) {
@@ -437,6 +512,41 @@ fun MapScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Floating Map Zoom In / Zoom Out Controls
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 6.dp,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(
+                            onClick = { mapInstance?.animateCamera(CameraUpdateFactory.zoomIn()) },
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "放大地圖",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.width(30.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        IconButton(
+                            onClick = { mapInstance?.animateCamera(CameraUpdateFactory.zoomOut()) },
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "縮小地圖",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
                 FloatingActionButton(
                     onClick = {
                         locationPermissionLauncher.launch(
@@ -616,6 +726,19 @@ fun MapScreen(
                     onPickOnMap = viewModel::startPickingNewStationLocation,
                     onDismiss = viewModel::dismissAddStationSheet,
                     onSubmit = viewModel::submitNewStation
+                )
+            }
+        }
+        // Marker Color Settings BottomSheet
+        if (uiState.showColorSettingsSheet) {
+            ModalBottomSheet(
+                onDismissRequest = viewModel::dismissColorSettingsSheet
+            ) {
+                MarkerColorSettingsSheet(
+                    config = uiState.markerColorConfig,
+                    onSelectColor = viewModel::updateMarkerColor,
+                    onResetDefaults = viewModel::resetMarkerColors,
+                    onDismiss = viewModel::dismissColorSettingsSheet
                 )
             }
         }

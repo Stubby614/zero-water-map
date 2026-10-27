@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.zerowater.map.data.local.MarkerColorConfig
+import app.zerowater.map.data.local.MarkerColorPreferences
 import app.zerowater.map.data.local.PhotoStorageHelper
 import app.zerowater.map.data.location.AddressCandidate
 import app.zerowater.map.data.location.GeoPoint
@@ -13,6 +15,7 @@ import app.zerowater.map.data.model.AccessType
 import app.zerowater.map.data.model.StationRatingSummary
 import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
+import app.zerowater.map.data.model.TemperatureCategory
 import app.zerowater.map.data.model.WaterStation
 import app.zerowater.map.data.repository.WaterStationRepository
 import app.zerowater.map.data.route.RouteInfo
@@ -56,13 +59,13 @@ private data class InteractionState(
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
     val showStationListSheet: Boolean = false,
+    val showColorSettingsSheet: Boolean = false,
     val isDiscoveringOsm: Boolean = false,
     val discoveryStatusMessage: String? = null,
     val cameraTarget: CameraTargetEvent? = null,
     val draftStationPhotoUri: String? = null,
     val draftReviewPhotoUri: String? = null
 )
-
 data class MapUiState(
     val stations: List<WaterStation> = emptyList(),
     val filter: StationFilter = StationFilter(),
@@ -80,6 +83,7 @@ data class MapUiState(
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
     val showStationListSheet: Boolean = false,
+    val showColorSettingsSheet: Boolean = false,
     val isDiscoveringOsm: Boolean = false,
     val discoveryStatusMessage: String? = null,
     val cameraTarget: CameraTargetEvent? = null,
@@ -87,16 +91,17 @@ data class MapUiState(
     val ratingSummaries: Map<String, StationRatingSummary> = emptyMap(),
     val selectedStationPhotos: List<String> = emptyList(),
     val draftStationPhotoUri: String? = null,
-    val draftReviewPhotoUri: String? = null
+    val draftReviewPhotoUri: String? = null,
+    val markerColorConfig: MarkerColorConfig = MarkerColorConfig()
 )
-
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val repository: WaterStationRepository,
     private val locationTracker: LocationTracker,
     private val geocodingService: GeocodingService,
     private val routeRepository: RouteRepository,
-    private val photoStorageHelper: PhotoStorageHelper
+    private val photoStorageHelper: PhotoStorageHelper,
+    private val markerColorPreferences: MarkerColorPreferences
 ) : ViewModel() {
 
     private val filterFlow = MutableStateFlow(StationFilter())
@@ -106,13 +111,17 @@ class MapViewModel @Inject constructor(
     private var reverseGeocodeJob: Job? = null
     private var searchAddressJob: Job? = null
     private var cameraSeq = 0
+    private val interactionAndConfigFlow = combine(interactionFlow, markerColorPreferences.configFlow) { interaction, config ->
+        interaction to config
+    }
+
     val uiState: StateFlow<MapUiState> = combine(
         repository.observeStations(),
         repository.observeAllReviews(),
         filterFlow,
         selectedStationIdFlow,
-        interactionFlow
-    ) { allStations, allReviews, filter, selectedId, interaction ->
+        interactionAndConfigFlow
+    ) { allStations, allReviews, filter, selectedId, (interaction, markerColors) ->
         val userLoc = interaction.userLocation
         val query = filter.searchQuery.trim()
         val filtered = allStations.filter { station ->
@@ -176,6 +185,7 @@ class MapViewModel @Inject constructor(
             isSearchingAddress = interaction.isSearchingAddress,
             showAddStationSheet = interaction.showAddStationSheet,
             showStationListSheet = interaction.showStationListSheet,
+            showColorSettingsSheet = interaction.showColorSettingsSheet,
             isDiscoveringOsm = interaction.isDiscoveringOsm,
             discoveryStatusMessage = interaction.discoveryStatusMessage,
             cameraTarget = interaction.cameraTarget,
@@ -183,7 +193,8 @@ class MapViewModel @Inject constructor(
             ratingSummaries = summaries,
             selectedStationPhotos = selectedPhotos,
             draftStationPhotoUri = interaction.draftStationPhotoUri,
-            draftReviewPhotoUri = interaction.draftReviewPhotoUri
+            draftReviewPhotoUri = interaction.draftReviewPhotoUri,
+            markerColorConfig = markerColors
         )
     }.stateIn(
         scope = viewModelScope,
@@ -593,5 +604,21 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             repository.reportStationStatus(stationId, status)
         }
+    }
+
+    fun openColorSettingsSheet() {
+        interactionFlow.update { it.copy(showColorSettingsSheet = true) }
+    }
+
+    fun dismissColorSettingsSheet() {
+        interactionFlow.update { it.copy(showColorSettingsSheet = false) }
+    }
+
+    fun updateMarkerColor(category: TemperatureCategory, hex: String) {
+        markerColorPreferences.setCategoryColor(category, hex)
+    }
+
+    fun resetMarkerColors() {
+        markerColorPreferences.resetToDefaults()
     }
 }
