@@ -1,5 +1,6 @@
 package app.zerowater.map.data.repository
 
+import android.content.Context
 import app.zerowater.map.BuildConfig
 import app.zerowater.map.data.local.StationReviewDao
 import app.zerowater.map.data.local.StationReviewEntity
@@ -9,16 +10,21 @@ import app.zerowater.map.data.model.AccessType
 import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
 import app.zerowater.map.data.model.WaterStation
+import app.zerowater.map.data.remote.OpenWaterDatasetDto
 import app.zerowater.map.data.remote.OverpassWaterService
 import app.zerowater.map.data.remote.StatusReportRequest
 import app.zerowater.map.data.remote.WaterStationApi
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WaterStationRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val json: Json,
     private val dao: WaterStationDao,
     private val reviewDao: StationReviewDao,
     private val api: WaterStationApi,
@@ -33,12 +39,23 @@ class WaterStationRepository @Inject constructor(
     fun observeAllReviews(): Flow<List<StationReview>> =
         reviewDao.observeAllReviews().map { list -> list.map { it.toDomain() } }
 
-    suspend fun ensureSeedDataLoaded() {
-        if (dao.count() == 0) {
-            dao.upsertAll(defaultTaiwanSeedStations().map(WaterStationEntity::fromDomain))
+    private fun loadBundledTaiwanStations(): OpenWaterDatasetDto? = runCatching {
+        context.assets.open("taiwan_water_stations.json").use { stream ->
+            val content = stream.bufferedReader().use { it.readText() }
+            json.decodeFromString<OpenWaterDatasetDto>(content)
         }
-        if (reviewDao.count() == 0) {
-            reviewDao.insertAll(defaultSeedReviews().map(StationReviewEntity::fromDomain))
+    }.getOrNull()
+
+    suspend fun ensureSeedDataLoaded() {
+        val bundled = loadBundledTaiwanStations()
+        val stationsToSeed = bundled?.stations?.takeIf { it.isNotEmpty() } ?: defaultTaiwanSeedStations()
+        val reviewsToSeed = bundled?.reviews?.takeIf { it.isNotEmpty() } ?: defaultSeedReviews()
+
+        if (dao.count() < stationsToSeed.size) {
+            dao.insertIgnoreAll(stationsToSeed.map(WaterStationEntity::fromDomain))
+        }
+        if (reviewDao.count() < reviewsToSeed.size) {
+            reviewDao.insertAll(reviewsToSeed.map(StationReviewEntity::fromDomain))
         }
     }
 

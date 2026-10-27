@@ -1,19 +1,17 @@
 {
   "type": "FeatureCollection",
-  "metadata": {
-    "name": "Zero Water Map (拎水地圖) Taiwan Drinking Water Stations",
-    "license": "CC-BY-4.0",
-    "updatedAt": "2026-10-21T00:00:00Z"
-  },
   "features": [
     {
       "type": "Feature",
-      "id": "tpe-main-station-b1",
       "geometry": {
         "type": "Point",
-        "coordinates": [121.5174, 25.0462]
+        "coordinates": [
+          121.5174,
+          25.0462
+        ]
       },
       "properties": {
+        "id": "tpe-main-station-b1",
         "name": "台北車站 B1 誠品捷運連通道飲水機",
         "floorHint": "B1 往捷運淡水信義線閘門旁、洗手間外",
         "accessType": "PUBLIC",
@@ -21,6 +19,7 @@
         "hasWarm": true,
         "hasCold": true,
         "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
         "is24Hours": false,
         "openHours": "06:00 - 24:00",
         "status": "WORKING"
@@ -28,12 +27,15 @@
     },
     {
       "type": "Feature",
-      "id": "tpe-library-daan",
       "geometry": {
         "type": "Point",
-        "coordinates": [121.5378, 25.0289]
+        "coordinates": [
+          121.5378,
+          25.0289
+        ]
       },
       "properties": {
+        "id": "tpe-library-daan",
         "name": "臺北市立圖書館總館 1F 飲水機",
         "floorHint": "1F 服務台後方茶水間（免換證可直接入內）",
         "accessType": "SEMI_PUBLIC",
@@ -41,6 +43,7 @@
         "hasWarm": true,
         "hasCold": true,
         "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
         "is24Hours": false,
         "openHours": "08:30 - 21:00",
         "status": "WORKING"
@@ -48,41 +51,985 @@
     },
     {
       "type": "Feature",
-      "id": "ntu-total-library-b1",
       "geometry": {
         "type": "Point",
-        "coordinates": [121.5405, 25.0174]
+        "coordinates": [
+          121.5405,
+          25.0174
+        ]
       },
       "properties": {
+        "id": "ntu-total-library-b1",
         "name": "台大總圖書館 B1 自習室外部飲水機",
         "floorHint": "B1 國際會議廳走廊旁（免刷學生證區域）",
         "accessType": "SEMI_PUBLIC",
         "hasHot": true,
         "hasWarm": true,
         "hasCold": true,
-        "hasIced": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
         "is24Hours": false,
-        "openHours": "08:00 - 22:30",
+        "openHours": "08:00 - 22:00",
         "status": "WORKING"
       }
     },
     {
       "type": "Feature",
-      "id": "zhongshan-sports-center-1f",
       "geometry": {
         "type": "Point",
-        "coordinates": [121.5214, 25.0548]
+        "coordinates": [
+          121.5355,
+          25.0315
+        ]
       },
       "properties": {
-        "name": "中山運動中心 1F 大廳飲水機",
-        "floorHint": "1F 進門右手邊販賣機旁，大口徑水壺好裝",
+        "id": "daan-park-service-center",
+        "name": "大安森林公園 遊客服務中心旁飲水機",
+        "floorHint": "公園中央服務中心廁所走廊",
+        "accessType": "PUBLIC",
+        "hasHot": false,
+        "hasWarm": false,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "HOT_OR_SINGLE",
+        "is24Hours": true,
+        "openHours": "24 小時開放",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.5779,
+          25.0494
+        ]
+      },
+      "properties": {
+        "id": "tpe-songshan-station-1f",
+        "name": "松山車站 1F 大廳台鐵服務台側",
+        "floorHint": "1F 東出口候車室洗手間側",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "05:30 - 23:50",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.6068,
+          25.0521
+        ]
+      },
+      "properties": {
+        "id": "tpe-nangang-station-b2",
+        "name": "南港車站 B2 高鐵候車區飲水機",
+        "floorHint": "B2 高鐵剪票口外通道洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "06:00 - 23:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.4636,
+          25.0142
+        ]
+      },
+      "properties": {
+        "id": "ntpc-banqiao-station-1f",
+        "name": "板橋車站 1F 台鐵／高鐵東門候車大廳",
+        "floorHint": "1F 售票大廳往東門通道洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "06:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.4657,
+          25.0125
+        ]
+      },
+      "properties": {
+        "id": "ntpc-banqiao-cityhall-1f",
+        "name": "新北市政府 1F 東側聯合服務中心飲水機",
+        "floorHint": "1F 聯合服務大廳近茶水間",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "08:00 - 18:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.4532,
+          24.9982
+        ]
+      },
+      "properties": {
+        "id": "ntpc-library-banqiao-main",
+        "name": "新北市立圖書館總館 1F 門廳飲水機",
+        "floorHint": "1F 服務台後方通道洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "08:30 - 21:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.4455,
+          25.1678
+        ]
+      },
+      "properties": {
+        "id": "ntpc-tamsui-mrt-1f",
+        "name": "捷運淡水站 1F 旅客詢問處旁飲水機",
+        "floorHint": "1F 閘門出口往金色水岸廣場洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "06:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.3135,
+          24.9892
+        ]
+      },
+      "properties": {
+        "id": "ty-station-old-front",
+        "name": "桃園車站 前站候車大廳飲水機",
+        "floorHint": "1F 前站出入口剪票閘門旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:00 - 23:50",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.3005,
+          25.0177
+        ]
+      },
+      "properties": {
+        "id": "ty-main-library-1f",
+        "name": "桃園市立圖書館新總館 1F 服務大廳",
+        "floorHint": "1F 生命樹入口大廳洗手間走廊",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "08:30 - 21:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.2148,
+          25.0129
+        ]
+      },
+      "properties": {
+        "id": "ty-hsr-station-1f",
+        "name": "高鐵桃園站 1F 售票大廳飲水機",
+        "floorHint": "1F 8號出口旁、近洗手間通道",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "06:00 - 23:45",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9715,
+          24.8016
+        ]
+      },
+      "properties": {
+        "id": "hsinchu-station-main-hall",
+        "name": "新竹火車站 候車大廳飲水機",
+        "floorHint": "1F 候車大廳第1月台側洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:30 - 23:40",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.0401,
+          24.8083
+        ]
+      },
+      "properties": {
+        "id": "hsinchu-hsr-station-1f",
+        "name": "高鐵新竹站 1F 候車區飲水機",
+        "floorHint": "1F 驗票閘門外近4號出口旁洗手間",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "06:00 - 23:45",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9934,
+          24.7938
+        ]
+      },
+      "properties": {
+        "id": "nthu-main-library-1f",
+        "name": "清華大學 學習資源中心(總圖) 1F 茶水間",
+        "floorHint": "旺宏館 1F 門廳側洗手間旁（免證入內）",
         "accessType": "SEMI_PUBLIC",
         "hasHot": true,
         "hasWarm": true,
         "hasCold": true,
         "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "08:00 - 22:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.8236,
+          24.5701
+        ]
+      },
+      "properties": {
+        "id": "miaoli-station-1f",
+        "name": "苗栗火車站 跨站大廳飲水機",
+        "floorHint": "2F 跨站售票大廳東出口洗手間外",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:30 - 23:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.6869,
+          24.1373
+        ]
+      },
+      "properties": {
+        "id": "txg-station-main-2f",
+        "name": "台中火車站 2F 售票大廳飲水機",
+        "floorHint": "2F 穿堂層剪票口前洗手間外側",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "05:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.6157,
+          24.1118
+        ]
+      },
+      "properties": {
+        "id": "txg-hsr-station-2f",
+        "name": "高鐵台中烏日站 2F 候車大廳飲水機",
+        "floorHint": "2F 乘車區洗手間通道旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "05:40 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.6685,
+          24.1264
+        ]
+      },
+      "properties": {
+        "id": "txg-public-library-1f",
+        "name": "國立公共資訊圖書館 (台中總館) 1F 門廳",
+        "floorHint": "1F 大廳服務台後方飲水區",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "09:00 - 21:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.6753,
+          24.1206
+        ]
+      },
+      "properties": {
+        "id": "txg-nchu-library-1f",
+        "name": "中興大學 圖書暨資訊處 1F 飲水機",
+        "floorHint": "1F 自習大廳外走廊飲水台",
+        "accessType": "SEMI_PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "08:00 - 22:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.5385,
+          24.0818
+        ]
+      },
+      "properties": {
+        "id": "ch-station-1f",
+        "name": "彰化火車站 1F 候車室飲水機",
+        "floorHint": "1F 候車剪票閘口旁洗手間外",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:00 - 23:50",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.6865,
+          23.9098
+        ]
+      },
+      "properties": {
+        "id": "nantou-county-hall-1f",
+        "name": "南投縣政府 1F 聯合服務中心茶水間",
+        "floorHint": "1F 縣民服務大廳洗手間走廊",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "08:00 - 17:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.5434,
+          23.7118
+        ]
+      },
+      "properties": {
+        "id": "douliu-station-2f",
+        "name": "斗六火車站 2F 跨站候車大廳飲水機",
+        "floorHint": "2F 穿堂剪票口旁洗手間通道",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:20 - 23:40",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.4412,
+          23.4792
+        ]
+      },
+      "properties": {
+        "id": "chiayi-station-1f",
+        "name": "嘉義火車站 前站候車大廳飲水機",
+        "floorHint": "1F 前站出入口往第1月台通道",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:00 - 23:50",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.2129,
+          22.9971
+        ]
+      },
+      "properties": {
+        "id": "tainan-station-main-1f",
+        "name": "台南火車站 前站大廳候車室飲水機",
+        "floorHint": "1F 前站剪票口側洗手間走廊",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.2858,
+          22.9248
+        ]
+      },
+      "properties": {
+        "id": "tainan-hsr-station-1f",
+        "name": "高鐵台南沙崙站 1F 售票大廳飲水機",
+        "floorHint": "1F 候車大廳近2號出口洗手間外",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "06:00 - 23:45",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.2372,
+          23.0163
+        ]
+      },
+      "properties": {
+        "id": "tainan-main-library-1f",
+        "name": "台南市立圖書館新總館 1F 服務台側",
+        "floorHint": "1F 大廳服務台後方飲水區",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "08:30 - 21:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.2185,
+          22.9998
+        ]
+      },
+      "properties": {
+        "id": "ncku-library-1f",
+        "name": "成功大學 總圖書館 1F 門廳茶水間",
+        "floorHint": "1F 自修閱覽室旁走廊（免證入內飲水）",
+        "accessType": "SEMI_PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "08:00 - 22:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.3023,
+          22.6397
+        ]
+      },
+      "properties": {
+        "id": "kh-station-b2",
+        "name": "高雄火車站 B2 捷運／台鐵轉乘穿堂飲水機",
+        "floorHint": "B2 穿堂層近台鐵剪票口洗手間外",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "05:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.3079,
+          22.6874
+        ]
+      },
+      "properties": {
+        "id": "kh-zuoying-hsr-2f",
+        "name": "高鐵左營站 2F 大廳候車區飲水機",
+        "floorHint": "2F 乘車閘門外洗手間走廊",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "05:45 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.3015,
+          22.6097
+        ]
+      },
+      "properties": {
+        "id": "kh-main-library-1f",
+        "name": "高雄市立圖書館總館 1F 穿堂飲水機",
+        "floorHint": "1F 半戶外穿堂近圖書館入口處",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "10:00 - 22:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.4862,
+          22.6698
+        ]
+      },
+      "properties": {
+        "id": "pingtung-station-1f",
+        "name": "屏東火車站 1F 候車大廳飲水機",
+        "floorHint": "1F 售票剪票大廳洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:00 - 23:45",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.4952,
+          22.6853
+        ]
+      },
+      "properties": {
+        "id": "pingtung-main-library-1f",
+        "name": "屏東縣立圖書館總館 1F 門廳森林飲水區",
+        "floorHint": "1F 森林大廳洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "09:00 - 21:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.7584,
+          24.7547
+        ]
+      },
+      "properties": {
+        "id": "yilan-station-1f",
+        "name": "宜蘭火車站 前站候車大廳飲水機",
+        "floorHint": "1F 幾米幾何門面旁、候車剪票閘口側",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:30 - 23:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.7725,
+          24.6775
+        ]
+      },
+      "properties": {
+        "id": "luodong-station-2f",
+        "name": "羅東火車站 2F 跨站售票候車大廳",
+        "floorHint": "2F 售票大廳往第二月台通道旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:20 - 23:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.6015,
+          23.9932
+        ]
+      },
+      "properties": {
+        "id": "hualien-station-3f",
+        "name": "花蓮火車站 3F 候車大廳飲水機",
+        "floorHint": "3F 挑高跨站候車大廳、剪票口旁洗手間外",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": true,
+        "temperatureCategory": "ICED_TRIPLE",
+        "is24Hours": false,
+        "openHours": "05:00 - 24:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.1235,
+          22.7937
+        ]
+      },
+      "properties": {
+        "id": "taitung-station-1f",
+        "name": "台東火車站 1F 候車大廳飲水機",
+        "floorHint": "1F 候車剪票口前洗手間外側",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "05:20 - 23:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.4999,
+          25.0369
+        ]
+      },
+      "properties": {
+        "id": "tpe-longshan-temple-service",
+        "name": "艋舺龍山寺 淨手水台旁純熱水奉茶機",
+        "floorHint": "廟埕側邊服務台旁奉茶桶（純熱水沖茶）",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": false,
+        "hasCold": false,
+        "hasIced": false,
+        "temperatureCategory": "HOT_OR_SINGLE",
         "is24Hours": false,
         "openHours": "06:00 - 22:00",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.6231,
+          24.3444
+        ]
+      },
+      "properties": {
+        "id": "txg-dajia-jenn-lann-temple",
+        "name": "大甲鎮瀾宮 地下室文化館熱水奉茶機",
+        "floorHint": "B1 媽祖文化館洗手間外側",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": false,
+        "hasCold": false,
+        "hasIced": false,
+        "temperatureCategory": "HOT_OR_SINGLE",
+        "is24Hours": false,
+        "openHours": "06:00 - 21:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.5746,
+          25.0275
+        ]
+      },
+      "properties": {
+        "id": "tpe-elephant-mountain-trail-start",
+        "name": "象山步道 靈天宮登山口直飲水機",
+        "floorHint": "靈天宮旁涼亭直飲水台（單一常溫水）",
+        "accessType": "PUBLIC",
+        "hasHot": false,
+        "hasWarm": false,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "HOT_OR_SINGLE",
+        "is24Hours": true,
+        "openHours": "24 小時開放",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121.5475,
+          25.1558
+        ]
+      },
+      "properties": {
+        "id": "tpe-yangmingshan-visitor-center",
+        "name": "陽明山國家公園遊客中心 1F 飲水機",
+        "floorHint": "1F 服務台旁洗手間通道",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "09:00 - 16:30",
+        "status": "WORKING"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9018,
+          23.8519
+        ]
+      },
+      "properties": {
+        "id": "sun-moon-lake-xiangshan-visitor",
+        "name": "日月潭向山行政暨遊客中心 1F 飲水機",
+        "floorHint": "1F 迴廊洗手間旁",
+        "accessType": "PUBLIC",
+        "hasHot": true,
+        "hasWarm": true,
+        "hasCold": true,
+        "hasIced": false,
+        "temperatureCategory": "WARM_HOT",
+        "is24Hours": false,
+        "openHours": "09:00 - 17:00",
         "status": "WORKING"
       }
     }

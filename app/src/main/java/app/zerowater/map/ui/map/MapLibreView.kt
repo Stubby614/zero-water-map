@@ -15,10 +15,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.zerowater.map.BuildConfig
+import app.zerowater.map.data.local.MarkerColorConfig
 import app.zerowater.map.data.location.DistanceFormatter
 import app.zerowater.map.data.location.GeoPoint
 import app.zerowater.map.data.model.StationStatus
+import app.zerowater.map.data.model.TemperatureCategory
 import app.zerowater.map.data.model.WaterStation
+import app.zerowater.map.data.model.temperatureCategory
+import org.maplibre.android.annotations.Icon
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolylineOptions
@@ -37,6 +41,7 @@ fun MapLibreView(
     onStationClick: (WaterStation) -> Unit,
     onCameraCenterChanged: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
+    markerColorConfig: MarkerColorConfig = MarkerColorConfig(),
     initialCenter: LatLng = LatLng(25.0375, 121.5320),
     initialZoom: Double = 13.5
 ) {
@@ -45,19 +50,32 @@ fun MapLibreView(
     val lastHandledCameraSeq = remember { mutableIntStateOf(0) }
 
     val iconFactory = remember(context) { IconFactory.getInstance(context) }
+
+    // High-visibility GPS dot: translucent outer halo + white rim + dark navy center
     val userDotIcon = remember(iconFactory) {
-        iconFactory.fromBitmap(createCircleMarkerBitmap(fillColor = Color.parseColor("#1E88E5"), radiusPx = 22f, strokeWidthPx = 8f))
-    }
-    val workingStationIcon = remember(iconFactory) {
-        iconFactory.fromBitmap(createCircleMarkerBitmap(fillColor = Color.parseColor("#00897B"), radiusPx = 26f, strokeWidthPx = 6f))
-    }
-    val selectedStationIcon = remember(iconFactory) {
-        iconFactory.fromBitmap(createCircleMarkerBitmap(fillColor = Color.parseColor("#FB8C00"), radiusPx = 32f, strokeWidthPx = 8f))
-    }
-    val warningStationIcon = remember(iconFactory) {
-        iconFactory.fromBitmap(createCircleMarkerBitmap(fillColor = Color.parseColor("#E53935"), radiusPx = 26f, strokeWidthPx = 6f))
+        iconFactory.fromBitmap(createUserLocationBitmap())
     }
 
+    // Icons keyed by temperature category
+    val categoryIcons = remember(iconFactory, markerColorConfig) {
+        TemperatureCategory.entries.associateWith { cat ->
+            val colorInt = markerColorConfig.colorIntFor(cat)
+            CategoryMarkerIcons(
+                normal = iconFactory.fromBitmap(
+                    createCircleMarkerBitmap(fillColor = colorInt, radiusPx = 24f, strokeWidthPx = 6f)
+                ),
+                selected = iconFactory.fromBitmap(
+                    createSelectedMarkerBitmap(fillColor = colorInt, radiusPx = 32f, strokeWidthPx = 8f)
+                )
+            )
+        }
+    }
+
+    val warningStationIcon = remember(iconFactory) {
+        iconFactory.fromBitmap(
+            createCircleMarkerBitmap(fillColor = Color.parseColor("#757575"), radiusPx = 24f, strokeWidthPx = 6f)
+        )
+    }
     val mapView = remember {
         MapView(context).apply {
             onCreate(null)
@@ -123,24 +141,27 @@ fun MapLibreView(
                     )
                 }
 
-                // Draw water stations
+                // Draw water stations with temperature-based colors
                 val markerToStation = mutableMapOf<Long, WaterStation>()
                 stations.forEach { station ->
-                    val icon = when {
-                        station.id == selectedStationId -> selectedStationIcon
+                    val catIcons = categoryIcons[station.temperatureCategory]
+                    val isSelected = station.id == selectedStationId
+                    val icon: Icon = when {
                         station.status != StationStatus.WORKING -> warningStationIcon
-                        else -> workingStationIcon
+                        isSelected -> catIcons?.selected ?: warningStationIcon
+                        else -> catIcons?.normal ?: warningStationIcon
                     }
                     val distPrefix = userLocation?.let {
                         val meters = it.distanceMetersTo(station.latitude, station.longitude)
                         "[${DistanceFormatter.formatDistance(meters)}] "
                     }.orEmpty()
+                    val tempTag = "[${station.temperatureCategory.shortLabel}]"
 
                     val marker = map.addMarker(
                         MarkerOptions()
                             .position(LatLng(station.latitude, station.longitude))
                             .title(station.name)
-                            .snippet("$distPrefix${station.floorHint}")
+                            .snippet("$tempTag $distPrefix${station.floorHint}")
                             .icon(icon)
                     )
                     markerToStation[marker.id] = station
@@ -172,6 +193,37 @@ fun MapLibreView(
     )
 }
 
+private data class CategoryMarkerIcons(
+    val normal: Icon,
+    val selected: Icon
+)
+
+private fun createUserLocationBitmap(): Bitmap {
+    val size = 64
+    val center = size / 2f
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#4D00BCD4")
+    }
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+        setShadowLayer(4f, 0f, 2f, Color.argb(100, 0, 0, 0))
+    }
+    val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#0D47A1")
+    }
+
+    canvas.drawCircle(center, center, 28f, haloPaint)
+    canvas.drawCircle(center, center, 18f, strokePaint)
+    canvas.drawCircle(center, center, 12f, centerPaint)
+    return bitmap
+}
+
 private fun createCircleMarkerBitmap(
     fillColor: Int,
     radiusPx: Float,
@@ -185,7 +237,7 @@ private fun createCircleMarkerBitmap(
     val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Color.WHITE
-        setShadowLayer(4f, 0f, 2f, Color.argb(80, 0, 0, 0))
+        setShadowLayer(5f, 0f, 3f, Color.argb(90, 0, 0, 0))
     }
     val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -193,6 +245,36 @@ private fun createCircleMarkerBitmap(
     }
 
     canvas.drawCircle(center, center, radiusPx + strokeWidthPx / 2f, strokePaint)
+    canvas.drawCircle(center, center, radiusPx, fillPaint)
+    return bitmap
+}
+
+private fun createSelectedMarkerBitmap(
+    fillColor: Int,
+    radiusPx: Float,
+    strokeWidthPx: Float
+): Bitmap {
+    val size = ((radiusPx + strokeWidthPx + 6f) * 2f).toInt().coerceAtLeast(24)
+    val center = size / 2f
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val outerDarkRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#212121")
+        setShadowLayer(8f, 0f, 4f, Color.argb(120, 0, 0, 0))
+    }
+    val innerWhiteRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+    }
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = fillColor
+    }
+
+    canvas.drawCircle(center, center, radiusPx + strokeWidthPx + 3f, outerDarkRingPaint)
+    canvas.drawCircle(center, center, radiusPx + strokeWidthPx / 2f, innerWhiteRingPaint)
     canvas.drawCircle(center, center, radiusPx, fillPaint)
     return bitmap
 }

@@ -49,3 +49,42 @@ data class WaterStation(
     val isFavorite: Boolean = false,
     val lastVerifiedEpochMillis: Long = System.currentTimeMillis()
 )
+
+@Serializable
+enum class TemperatureCategory(
+    val title: String,
+    val shortLabel: String,
+    val subtitle: String,
+    val defaultColorHex: String
+) {
+    @SerialName("ICED_TRIPLE")
+    ICED_TRIPLE(
+        title = "含冰水（冰／溫／熱）",
+        shortLabel = "冰溫熱",
+        subtitle = "有冰水（通常同時具備冰水、溫水與熱水）",
+        defaultColorHex = "#1E88E5"
+    ),
+
+    @SerialName("WARM_HOT")
+    WARM_HOT(
+        title = "溫熱水（溫水＋熱水）",
+        shortLabel = "溫熱水",
+        subtitle = "無冰水，提供溫水與熱水為主",
+        defaultColorHex = "#FDD835"
+    ),
+
+    @SerialName("HOT_OR_SINGLE")
+    HOT_OR_SINGLE(
+        title = "純熱水／單溫",
+        shortLabel = "熱水/單溫",
+        subtitle = "以熱水或單一常溫水為主",
+        defaultColorHex = "#E53935"
+    )
+}
+
+val WaterStation.temperatureCategory: TemperatureCategory
+    get() = when {
+        hasIced -> TemperatureCategory.ICED_TRIPLE
+        hasWarm && hasHot -> TemperatureCategory.WARM_HOT
+        else -> TemperatureCategory.HOT_OR_SINGLE
+    }
