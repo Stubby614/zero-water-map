@@ -53,7 +53,9 @@ const ANDROID_ASSETS_PATH = resolve(
   import.meta.dir,
   "../../app/src/main/assets/taiwan_water_stations.json"
 );
-const WEB_DIR = resolve(import.meta.dir, "../../web");
+const WEB_DIR = resolve(
+  process.env.WEB_DIR ?? resolve(import.meta.dir, "../../web")
+);
 const WEB_DATA_PATH = resolve(WEB_DIR, "stations.json");
 function loadInitialDataset(): OpenWaterDataset {
   if (existsSync(DATA_FILE_PATH)) {
