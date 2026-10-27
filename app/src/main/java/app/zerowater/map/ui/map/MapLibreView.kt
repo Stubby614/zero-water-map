@@ -7,6 +7,7 @@ import android.graphics.Paint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +52,13 @@ fun MapLibreView(
     val lifecycleOwner = LocalLifecycleOwner.current
     val lastHandledCameraSeq = remember { mutableIntStateOf(0) }
 
+    val lastRenderedStationIds = remember { mutableStateOf<List<String>>(emptyList()) }
+    val lastSelectedStationId = remember { mutableStateOf<String?>(null) }
+    val lastMarkerColorConfig = remember { mutableStateOf<MarkerColorConfig?>(null) }
+    val lastRoutePoints = remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
+    val lastUserLocation = remember { mutableStateOf<GeoPoint?>(null) }
+    val markerToStationMap = remember { mutableMapOf<Long, WaterStation>() }
+
     val iconFactory = remember(context) { IconFactory.getInstance(context) }
 
     // High-visibility GPS dot: translucent outer halo + white rim + dark navy center
@@ -87,12 +95,14 @@ fun MapLibreView(
                     .target(initialCenter)
                     .zoom(initialZoom)
                     .build()
+                map.setMinZoomPreference(4.0)
+                map.setMaxZoomPreference(19.0)
                 map.uiSettings.isZoomGesturesEnabled = true
                 map.uiSettings.isScrollGesturesEnabled = true
                 map.uiSettings.isDoubleTapGesturesEnabled = true
                 map.uiSettings.isQuickZoomGesturesEnabled = true
                 map.uiSettings.isRotateGesturesEnabled = true
-                map.uiSettings.isTiltGesturesEnabled = true
+                map.uiSettings.isTiltGesturesEnabled = false // Prevent 3D tilt crash during multi-touch pinch on legacy markers
                 onMapReady?.invoke(map)
                 map.addOnCameraIdleListener {
                     val target = map.cameraPosition.target
@@ -127,57 +137,74 @@ fun MapLibreView(
         modifier = modifier,
         update = { view ->
             view.getMapAsync { map ->
-                map.clear()
+                val currentStationIds = stations.map { it.id }
+                val needsMarkerRedraw = currentStationIds != lastRenderedStationIds.value ||
+                    selectedStationId != lastSelectedStationId.value ||
+                    markerColorConfig != lastMarkerColorConfig.value ||
+                    routePoints != lastRoutePoints.value ||
+                    (userLocation == null) != (lastUserLocation.value == null)
 
-                // Draw walking route polyline if active
-                if (routePoints.size >= 2) {
-                    val latLngs = routePoints.map { LatLng(it.latitude, it.longitude) }
-                    map.addPolyline(
-                        PolylineOptions()
-                            .addAll(latLngs)
-                            .color(Color.parseColor("#0277BD"))
-                            .width(6f)
-                    )
-                }
+                if (needsMarkerRedraw) {
+                    runCatching {
+                        map.clear()
+                        markerToStationMap.clear()
 
-                // Draw user location marker
-                if (userLocation != null) {
-                    map.addMarker(
-                        MarkerOptions()
-                            .position(LatLng(userLocation.latitude, userLocation.longitude))
-                            .title("你的目前位置")
-                            .icon(userDotIcon)
-                    )
-                }
+                        // Draw walking route polyline if active
+                        if (routePoints.size >= 2) {
+                            val latLngs = routePoints.map { LatLng(it.latitude, it.longitude) }
+                            map.addPolyline(
+                                PolylineOptions()
+                                    .addAll(latLngs)
+                                    .color(Color.parseColor("#0277BD"))
+                                    .width(6f)
+                            )
+                        }
 
-                // Draw water stations with temperature-based colors
-                val markerToStation = mutableMapOf<Long, WaterStation>()
-                stations.forEach { station ->
-                    val catIcons = categoryIcons[station.temperatureCategory]
-                    val isSelected = station.id == selectedStationId
-                    val icon: Icon = when {
-                        station.status != StationStatus.WORKING -> warningStationIcon
-                        isSelected -> catIcons?.selected ?: warningStationIcon
-                        else -> catIcons?.normal ?: warningStationIcon
+                        // Draw user location marker
+                        if (userLocation != null) {
+                            map.addMarker(
+                                MarkerOptions()
+                                    .position(LatLng(userLocation.latitude, userLocation.longitude))
+                                    .title("你的目前位置")
+                                    .icon(userDotIcon)
+                            )
+                        }
+
+                        // Draw water stations with temperature-based colors
+                        stations.forEach { station ->
+                            val catIcons = categoryIcons[station.temperatureCategory]
+                            val isSelected = station.id == selectedStationId
+                            val icon: Icon = when {
+                                station.status != StationStatus.WORKING -> warningStationIcon
+                                isSelected -> catIcons?.selected ?: warningStationIcon
+                                else -> catIcons?.normal ?: warningStationIcon
+                            }
+                            val distPrefix = userLocation?.let {
+                                val meters = it.distanceMetersTo(station.latitude, station.longitude)
+                                "[${DistanceFormatter.formatDistance(meters)}] "
+                            }.orEmpty()
+                            val tempTag = "[${station.temperatureCategory.shortLabel}]"
+
+                            val marker = map.addMarker(
+                                MarkerOptions()
+                                    .position(LatLng(station.latitude, station.longitude))
+                                    .title(station.name)
+                                    .snippet("$tempTag $distPrefix${station.floorHint}")
+                                    .icon(icon)
+                            )
+                            markerToStationMap[marker.id] = station
+                        }
+
+                        lastRenderedStationIds.value = currentStationIds
+                        lastSelectedStationId.value = selectedStationId
+                        lastMarkerColorConfig.value = markerColorConfig
+                        lastRoutePoints.value = routePoints
+                        lastUserLocation.value = userLocation
                     }
-                    val distPrefix = userLocation?.let {
-                        val meters = it.distanceMetersTo(station.latitude, station.longitude)
-                        "[${DistanceFormatter.formatDistance(meters)}] "
-                    }.orEmpty()
-                    val tempTag = "[${station.temperatureCategory.shortLabel}]"
-
-                    val marker = map.addMarker(
-                        MarkerOptions()
-                            .position(LatLng(station.latitude, station.longitude))
-                            .title(station.name)
-                            .snippet("$tempTag $distPrefix${station.floorHint}")
-                            .icon(icon)
-                    )
-                    markerToStation[marker.id] = station
                 }
 
                 map.setOnMarkerClickListener { marker ->
-                    val clickedStation = markerToStation[marker.id]
+                    val clickedStation = markerToStationMap[marker.id]
                     if (clickedStation != null) {
                         onStationClick(clickedStation)
                         true

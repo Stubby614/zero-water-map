@@ -22,11 +22,11 @@ data class GeoPoint(
     val latitude: Double,
     val longitude: Double
 ) {
-    fun distanceMetersTo(targetLat: Double, targetLng: Double): Float {
+    fun distanceMetersTo(targetLat: Double, targetLng: Double): Float = runCatching {
         val results = FloatArray(1)
         Location.distanceBetween(latitude, longitude, targetLat, targetLng, results)
-        return results[0]
-    }
+        results[0]
+    }.getOrDefault(0f)
 }
 
 object DistanceFormatter {
