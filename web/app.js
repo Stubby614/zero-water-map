@@ -56,7 +56,7 @@ const state = {
   markerColors: { ...DEFAULT_CATEGORY_COLORS },
   userLocation: null, // [lng, lat]
   userMarker: null,
-  stationMarkers: new Map(), // stationId -> maplibregl.Marker
+  layersReady: false,
   activeFilters: {
     favorite: false,
     public: false,
@@ -575,86 +575,224 @@ const ExternalServices = {
 // ============================================================================
 // 6. 地圖控制器與圖釘管理 (Map & Markers)
 // ============================================================================
-function createMarkerElement(station) {
-  const category = getTemperatureCategory(station);
-  const color = getCategoryColor(category);
+const STATIONS_SOURCE_ID = "stations";
+const PIN_ICON_IDS = {
+  ICED_TRIPLE: "zw-pin-iced-triple",
+  WARM_HOT: "zw-pin-warm-hot",
+  HOT_OR_SINGLE: "zw-pin-hot-single",
+};
 
-  const el = document.createElement("div");
-  el.className = "custom-station-marker";
-  el.dataset.id = station.id;
-  el.title = `${station.name} (${getCategoryLabel(category)})`;
+/**
+ * 以 canvas 直接繪製水滴圖釘（2x 解析度）。
+ * 刻意不用 DOM marker：數千點位時 DOM 節點會拖垮整個地圖。
+ */
+function buildPinImage(color) {
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = 36 * scale;
+  canvas.height = 44 * scale;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
 
-  // 精緻水滴圖釘 SVG
-  el.innerHTML = `
-    <svg class="marker-pin-svg" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18 42C18 42 32 26.5 32 16C32 8.268 25.732 2 18 2C10.268 2 4 8.268 4 16C4 26.5 18 42 18 42Z" fill="${color}" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
-      <circle cx="18" cy="16" r="6" fill="#FFFFFF"/>
-      <circle cx="18" cy="16" r="3.2" fill="${color}"/>
-    </svg>
-  `;
+  const drop = new Path2D(
+    "M18 42C18 42 32 26.5 32 16C32 8.268 25.732 2 18 2C10.268 2 4 8.268 4 16C4 26.5 18 42 18 42Z"
+  );
+  ctx.fillStyle = color;
+  ctx.fill(drop);
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.stroke(drop);
 
-  el.addEventListener("click", (e) => {
-    e.stopPropagation();
-    selectStation(station);
-  });
+  ctx.beginPath();
+  ctx.arc(18, 16, 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
 
-  return el;
+  ctx.beginPath();
+  ctx.arc(18, 16, 3.2, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-function updateMarkerColorsOnMap() {
-  for (const [stationId, marker] of state.stationMarkers.entries()) {
-    const station = state.stations.find((s) => s.id === stationId);
-    if (!station) continue;
-    const category = getTemperatureCategory(station);
-    const color = getCategoryColor(category);
-    const el = marker.getElement();
-    const paths = el.querySelectorAll("path, circle[fill]:not([fill='#FFFFFF'])");
-    for (const p of paths) {
-      p.setAttribute("fill", color);
+/** 將三種水溫分類的圖釘圖示註冊（或更新）到地圖樣式中 */
+function syncPinImages() {
+  // 不用 isStyleLoaded()：來源仍在抓資料時它會回 false，會讓換色靜默失效
+  if (!state.layersReady) return;
+
+  for (const [category, iconId] of Object.entries(PIN_ICON_IDS)) {
+    const image = buildPinImage(getCategoryColor(category));
+    if (state.map.hasImage(iconId)) {
+      state.map.updateImage(iconId, image);
+    } else {
+      state.map.addImage(iconId, image, { pixelRatio: 2 });
     }
   }
+}
 
-  // 同步更新頂部與 Modal 中的預覽色點
+/** 同步頂部圖例與調色盤預覽的色點 */
+function syncLegendDots() {
   document.getElementById("dot-iced-legend").style.backgroundColor = state.markerColors.ICED_TRIPLE;
   document.getElementById("dot-warm-legend").style.backgroundColor = state.markerColors.WARM_HOT;
   document.getElementById("dot-hot-legend").style.backgroundColor = state.markerColors.HOT_OR_SINGLE;
 
-  const dotIcedPrev = document.getElementById("dot-iced-preview");
-  if (dotIcedPrev) dotIcedPrev.style.backgroundColor = state.markerColors.ICED_TRIPLE;
-  const dotWarmPrev = document.getElementById("dot-warm-preview");
-  if (dotWarmPrev) dotWarmPrev.style.backgroundColor = state.markerColors.WARM_HOT;
-  const dotHotPrev = document.getElementById("dot-hot-preview");
-  if (dotHotPrev) dotHotPrev.style.backgroundColor = state.markerColors.HOT_OR_SINGLE;
+  const previews = {
+    "dot-iced-preview": state.markerColors.ICED_TRIPLE,
+    "dot-warm-preview": state.markerColors.WARM_HOT,
+    "dot-hot-preview": state.markerColors.HOT_OR_SINGLE,
+  };
+  for (const [id, color] of Object.entries(previews)) {
+    const el = document.getElementById(id);
+    if (el) el.style.backgroundColor = color;
+  }
 }
 
-function renderAllMarkers() {
-  // 清除舊圖釘
-  for (const marker of state.stationMarkers.values()) {
-    marker.remove();
-  }
-  state.stationMarkers.clear();
+function updateMarkerColorsOnMap() {
+  syncPinImages();
+  syncLegendDots();
+}
 
-  // 篩選站點
-  const filtered = state.stations.filter((s) => {
-    if (s.status === "REMOVED") return false;
-    if (state.activeFilters.favorite && !state.favorites.has(s.id)) return false;
-    if (state.activeFilters.public && s.accessType !== "PUBLIC") return false;
-    if (state.activeFilters.iced && !s.hasIced) return false;
-    if (state.activeFilters.hot && !s.hasHot) return false;
-    if (state.activeFilters["24h"] && !s.is24Hours) return false;
+function filterStations() {
+  return state.stations.filter((station) => {
+    if (station.status === "REMOVED") return false;
+    if (state.activeFilters.favorite && !state.favorites.has(station.id)) return false;
+    if (state.activeFilters.public && station.accessType !== "PUBLIC") return false;
+    if (state.activeFilters.iced && !station.hasIced) return false;
+    if (state.activeFilters.hot && !station.hasHot) return false;
+    if (state.activeFilters["24h"] && !station.is24Hours) return false;
     return true;
   });
+}
 
-  // 建立新圖釘
-  for (const station of filtered) {
-    const el = createMarkerElement(station);
-    const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
-      .setLngLat([station.longitude, station.latitude])
-      .addTo(state.map);
-    state.stationMarkers.set(station.id, marker);
+function toFeatureCollection(stations) {
+  return {
+    type: "FeatureCollection",
+    features: stations.map((station) => ({
+      type: "Feature",
+      id: station.id,
+      geometry: { type: "Point", coordinates: [station.longitude, station.latitude] },
+      properties: {
+        id: station.id,
+        name: station.name,
+        category: getTemperatureCategory(station),
+      },
+    })),
+  };
+}
+
+/** 建立站點 GeoJSON 來源與分群圖層（樣式載入後呼叫一次） */
+function initStationLayers() {
+  state.layersReady = true;
+  syncPinImages();
+  syncLegendDots();
+
+  state.map.addSource(STATIONS_SOURCE_ID, {
+    type: "geojson",
+    data: toFeatureCollection([]),
+    cluster: true,
+    clusterRadius: 55,
+    clusterMaxZoom: 15,
+  });
+
+  state.map.addLayer({
+    id: "zw-cluster-circle",
+    type: "circle",
+    source: STATIONS_SOURCE_ID,
+    filter: ["has", "point_count"],
+    paint: {
+      "circle-color": [
+        "step",
+        ["get", "point_count"],
+        "#1E88E5",
+        20,
+        "#1565C0",
+        100,
+        "#0D47A1",
+      ],
+      "circle-radius": ["step", ["get", "point_count"], 16, 20, 20, 100, 26],
+      "circle-stroke-width": 3,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-opacity": 0.92,
+    },
+  });
+
+  state.map.addLayer({
+    id: "zw-cluster-count",
+    type: "symbol",
+    source: STATIONS_SOURCE_ID,
+    filter: ["has", "point_count"],
+    layout: {
+      "text-field": ["get", "point_count_abbreviated"],
+      "text-size": 13,
+      "text-font": ["Noto Sans Bold"],
+      "text-allow-overlap": true,
+    },
+    paint: { "text-color": "#FFFFFF" },
+  });
+
+  state.map.addLayer({
+    id: "zw-station-pins",
+    type: "symbol",
+    source: STATIONS_SOURCE_ID,
+    filter: ["!", ["has", "point_count"]],
+    layout: {
+      "icon-image": [
+        "match",
+        ["get", "category"],
+        "ICED_TRIPLE",
+        PIN_ICON_IDS.ICED_TRIPLE,
+        "WARM_HOT",
+        PIN_ICON_IDS.WARM_HOT,
+        PIN_ICON_IDS.HOT_OR_SINGLE,
+      ],
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 13, 0.8, 18, 1.1],
+      "icon-anchor": "bottom",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+  });
+
+  state.map.on("click", "zw-station-pins", (event) => {
+    const feature = event.features?.[0];
+    if (!feature) return;
+    const station = state.stations.find((s) => s.id === feature.properties.id);
+    if (station) selectStation(station);
+  });
+
+  state.map.on("click", "zw-cluster-circle", async (event) => {
+    const feature = event.features?.[0];
+    if (!feature) return;
+    const source = state.map.getSource(STATIONS_SOURCE_ID);
+    try {
+      // MapLibre v4：getClusterExpansionZoom 回傳 Promise（v3 為 callback）
+      const expansionZoom = await source.getClusterExpansionZoom(feature.properties.cluster_id);
+      state.map.easeTo({
+        center: feature.geometry.coordinates,
+        zoom: Math.min(expansionZoom + 1, 18),
+      });
+    } catch (err) {
+      console.warn("展開分群失敗", err);
+    }
+  });
+
+  for (const layerId of ["zw-station-pins", "zw-cluster-circle"]) {
+    state.map.on("mouseenter", layerId, () => {
+      state.map.getCanvas().style.cursor = "pointer";
+    });
+    state.map.on("mouseleave", layerId, () => {
+      state.map.getCanvas().style.cursor = "";
+    });
   }
+}
 
-  // 更新計數
+/** 依目前篩選條件更新圖層資料（不重建圖層，數千點位仍維持流暢） */
+function renderAllMarkers() {
+  const filtered = filterStations();
+  const source = state.map?.getSource(STATIONS_SOURCE_ID);
+  if (source) source.setData(toFeatureCollection(filtered));
+
   document.getElementById("station-count-badge").textContent = filtered.length;
   document.getElementById("list-badge").textContent = filtered.length;
 }
@@ -923,6 +1061,11 @@ function renderStationListItems() {
     return;
   }
 
+  // 全台兩千多筆時，一次渲染全部列會讓手機嚴重卡頓；僅顯示前 200 筆
+  const LIST_RENDER_LIMIT = 200;
+  const totalMatches = list.length;
+  if (list.length > LIST_RENDER_LIMIT) list = list.slice(0, LIST_RENDER_LIMIT);
+
   container.innerHTML = list
     .map((s) => {
       const cat = getTemperatureCategory(s);
@@ -950,6 +1093,13 @@ function renderStationListItems() {
       `;
     })
     .join("");
+
+  if (totalMatches > list.length) {
+    container.insertAdjacentHTML(
+      "beforeend",
+      `<div class="no-photo-hint" style="text-align:center;padding:12px 0;">共 ${totalMatches} 處符合，僅顯示前 ${list.length} 筆，請用搜尋縮小範圍</div>`
+    );
+  }
 }
 
 window.selectStationById = function (id) {
@@ -1045,8 +1195,15 @@ async function initApp() {
 
   state.map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
-  // 3. 載入站點資料庫
-  const dataset = await DataSyncService.fetchStationsAndReviews();
+  // 3. 等樣式載入後建立 GeoJSON 分群圖層，再載入站點資料庫
+  if (!state.map.isStyleLoaded()) {
+    const { promise, resolve } = Promise.withResolvers();
+    state.map.once("load", resolve);
+    await promise;
+  }
+  initStationLayers();
+
+  await DataSyncService.fetchStationsAndReviews();
   renderAllMarkers();
 
   // 地圖移動事件 (更新新增飲水機時的十字準星座標)
@@ -1060,10 +1217,14 @@ async function initApp() {
     }
   });
 
-  state.map.on("click", () => {
-    if (!state.isAddingStation) {
-      closeAllSheets();
-    }
+  state.map.on("click", (event) => {
+    if (state.isAddingStation) return;
+    // 點在圖釘或分群圓圈上時，交由圖層自己的 handler 處理，不要關閉面板
+    const hits = state.map.queryRenderedFeatures(event.point, {
+      layers: ["zw-station-pins", "zw-cluster-circle"],
+    });
+    if (hits.length > 0) return;
+    closeAllSheets();
   });
 
   // 4. 定位使用者位置 (HTML5 Geolocation)
