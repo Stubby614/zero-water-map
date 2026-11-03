@@ -47,6 +47,23 @@ interface WaterStationDao {
     @Query("UPDATE water_stations SET isFavorite = :isFavorite WHERE id = :stationId")
     suspend fun updateFavorite(stationId: String, isFavorite: Boolean)
 
+    @Query(
+        """
+        UPDATE water_stations
+        SET hasIced = :hasIced, hasWarm = :hasWarm, hasCold = :hasCold, hasHot = :hasHot,
+            lastVerifiedEpochMillis = :verifiedAt
+        WHERE id = :stationId
+        """
+    )
+    suspend fun updateTemperatures(
+        stationId: String,
+        hasIced: Boolean,
+        hasWarm: Boolean,
+        hasCold: Boolean,
+        hasHot: Boolean,
+        verifiedAt: Long
+    )
+
     @Query("SELECT COUNT(*) FROM water_stations")
     suspend fun count(): Int
 }

@@ -79,12 +79,32 @@ enum class TemperatureCategory(
         shortLabel = "熱水/單溫",
         subtitle = "以熱水或單一常溫水為主",
         defaultColorHex = "#E53935"
+    ),
+
+    @SerialName("UNTAGGED")
+    UNTAGGED(
+        title = "尚未標記水溫（待回報）",
+        shortLabel = "待標記",
+        subtitle = "尚未確認水溫，歡迎取水時透過評論協助標記",
+        defaultColorHex = "#9E9E9E"
     )
 }
 
 val WaterStation.temperatureCategory: TemperatureCategory
     get() = when {
+        !hasIced && !hasWarm && !hasHot && !hasCold -> TemperatureCategory.UNTAGGED
         hasIced -> TemperatureCategory.ICED_TRIPLE
         hasWarm && hasHot -> TemperatureCategory.WARM_HOT
         else -> TemperatureCategory.HOT_OR_SINGLE
     }
+
+/** 使用者在評論中協助回報的水溫（送出後即更新該站點的水溫標記） */
+@Serializable
+data class ReportedTemperatures(
+    val hasIced: Boolean = false,
+    val hasWarm: Boolean = false,
+    val hasCold: Boolean = false,
+    val hasHot: Boolean = false
+) {
+    val hasAny: Boolean get() = hasIced || hasWarm || hasCold || hasHot
+}

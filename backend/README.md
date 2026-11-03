@@ -38,7 +38,23 @@ https://raw.githubusercontent.com/Stubby614/zero-water-map/main/open-data/statio
 cd backend
 bun run src/server.ts
 ```
-啟動後預設監聽 `http://localhost:8080`。
+啟動後預設監聽 `http://localhost:8080`；同一個伺服器也會託管 `web/` 網頁版（`GET /`）。
+
+### 3.1 匯入全台飲水機開放資料
+`backend/scripts/fetch-taiwan-water.ts` 會把策展點位、使用者貢獻點位與 OpenStreetMap `amenity=drinking_water` 節點合併成一份資料集，並同步寫入 `open-data/`、Android assets 與 `web/stations.json`。
+```bash
+cd backend
+bun run scripts/fetch-taiwan-water.ts
+```
+| 環境變數 | 預設值 | 用途 |
+| :--- | :--- | :--- |
+| `ZWM_TILE_GRID` | `5` | 將台灣切成 N×N 個查詢分塊；越大越穩但越慢 |
+| `ZWM_FETCH_BUDGET_MS` | `1200000` | 抓取總時間預算，超過即停止並保留已取得資料 |
+| `ZWM_OSM=0` | — | 略過 Overpass，只用既有資料集重新產生輸出檔 |
+
+> Overpass 端點偶爾會回 502／504 或逾時，腳本會依序換端點並略過失敗分塊；由於合併是**累加**的（既有 OSM 點位會保留），分次執行即可逐步補齊全台覆蓋率，不會因為單次失敗而遺失先前抓到的城市。
+
+---
 
 ## 4. 部署至 GCP Cloud Run（一行指令）
 在專案根目錄執行：

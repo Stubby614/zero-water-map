@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AssistChip
@@ -89,6 +90,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.zerowater.map.data.location.DistanceFormatter
 import app.zerowater.map.data.location.GeoPoint
 import app.zerowater.map.data.model.QUICK_REVIEW_TAGS
+import app.zerowater.map.data.model.ReportedTemperatures
 import app.zerowater.map.data.model.StationRatingSummary
 import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
@@ -160,7 +162,7 @@ fun MapScreen(
     }
     Box(modifier = Modifier.fillMaxSize()) {
         MapLibreView(
-            stations = uiState.stations,
+            stations = uiState.mapStations,
             selectedStationId = uiState.selectedStation?.id,
             userLocation = uiState.userLocation,
             routePoints = uiState.activeRoute?.points.orEmpty(),
@@ -223,74 +225,19 @@ fun MapScreen(
                         onClick = viewModel::toggle24HoursFilter,
                         label = { Text("24H") }
                     )
-                }
-            }
-            // Temperature Color Legend Capsule (clickable -> opens MarkerColorSettingsSheet)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Surface(
-                    modifier = Modifier.clickable { viewModel.openColorSettingsSheet() },
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    tonalElevation = 5.dp,
-                    shadowElevation = 5.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    IconButton(
+                        onClick = viewModel::openColorSettingsSheet,
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(uiState.markerColorConfig.icedColorHex)))
-                                    .border(1.dp, Color.White, CircleShape)
-                            )
-                            Text("冰溫熱", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(uiState.markerColorConfig.warmHotColorHex)))
-                                    .border(1.dp, Color.White, CircleShape)
-                            )
-                            Text("溫熱水", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(uiState.markerColorConfig.hotOnlyColorHex)))
-                                    .border(1.dp, Color.White, CircleShape)
-                            )
-                            Text("熱水/單溫", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
-                        }
                         Icon(
-                            imageVector = Icons.Default.Palette,
-                            contentDescription = "自訂圖釘顏色",
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "地圖與顯示設定",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
-
 
             // Explore nearby real OSM water stations pill & status banner
             if (!uiState.isPickingLocation) {
@@ -621,13 +568,14 @@ fun MapScreen(
                         reviewCameraLauncher.launch(null)
                     },
                     onClearReviewPhoto = viewModel::clearDraftReviewPhoto,
-                    onSubmitReview = { authorName, rating, comment, tags ->
+                    onSubmitReview = { authorName, rating, comment, tags, reportedTemperatures ->
                         viewModel.addStationReview(
                             stationId = station.id,
                             authorName = authorName,
                             rating = rating,
                             comment = comment,
-                            tags = tags
+                            tags = tags,
+                            reportedTemperatures = reportedTemperatures
                         )
                     },
                     onRequestLocation = {
@@ -738,7 +686,10 @@ fun MapScreen(
                     config = uiState.markerColorConfig,
                     onSelectColor = viewModel::updateMarkerColor,
                     onResetDefaults = viewModel::resetMarkerColors,
-                    onDismiss = viewModel::dismissColorSettingsSheet
+                    onDismiss = viewModel::dismissColorSettingsSheet,
+                    onToggleShowMarkers = viewModel::setShowMarkers,
+                    onToggleViewportOnly = viewModel::setViewportOnly,
+                    onSelectRadius = viewModel::setRadiusMeters
                 )
             }
         }
@@ -758,7 +709,13 @@ private fun StationDetailSheet(
     onPickReviewPhoto: () -> Unit,
     onTakeReviewPhoto: () -> Unit,
     onClearReviewPhoto: () -> Unit,
-    onSubmitReview: (authorName: String, rating: Int, comment: String, tags: List<String>) -> Unit,
+    onSubmitReview: (
+        authorName: String,
+        rating: Int,
+        comment: String,
+        tags: List<String>,
+        reportedTemperatures: ReportedTemperatures?
+    ) -> Unit,
     onRequestLocation: () -> Unit,
     onNavigateClick: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -769,6 +726,10 @@ private fun StationDetailSheet(
     var rating by remember(station.id) { mutableIntStateOf(5) }
     var selectedTags by remember(station.id) { mutableStateOf(setOf<String>()) }
     var comment by remember(station.id) { mutableStateOf("") }
+    var reportIced by remember(station.id) { mutableStateOf(station.hasIced) }
+    var reportWarm by remember(station.id) { mutableStateOf(station.hasWarm) }
+    var reportCold by remember(station.id) { mutableStateOf(station.hasCold) }
+    var reportHot by remember(station.id) { mutableStateOf(station.hasHot) }
     var enlargedPhotoUri by remember { mutableStateOf<String?>(null) }
 
     if (enlargedPhotoUri != null) {
@@ -1140,6 +1101,49 @@ private fun StationDetailSheet(
                         }
                     }
 
+                    // 協助標記水溫：勾選後隨評論送出，該站點圖釘立即變色
+                    val isUntagged = !station.hasIced && !station.hasWarm && !station.hasCold && !station.hasHot
+                    Text(
+                        text = if (isUntagged) {
+                            "🌡️ 此點位尚未標記水溫，歡迎勾選實際提供的水溫（送出後圖釘立即變色）："
+                        } else {
+                            "🌡️ 協助更新此飲水機水溫（選填）："
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isUntagged) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = reportIced,
+                            onClick = { reportIced = !reportIced },
+                            label = { Text("❄️ 冰水") }
+                        )
+                        FilterChip(
+                            selected = reportWarm,
+                            onClick = { reportWarm = !reportWarm },
+                            label = { Text("🍵 溫水") }
+                        )
+                        FilterChip(
+                            selected = reportCold,
+                            onClick = { reportCold = !reportCold },
+                            label = { Text("💧 常溫冷水") }
+                        )
+                        FilterChip(
+                            selected = reportHot,
+                            onClick = { reportHot = !reportHot },
+                            label = { Text("♨️ 熱水") }
+                        )
+                    }
+
                     OutlinedTextField(
                         value = comment,
                         onValueChange = { comment = it },
@@ -1223,7 +1227,13 @@ private fun StationDetailSheet(
                                 authorName,
                                 rating,
                                 finalComment,
-                                selectedTags.toList()
+                                selectedTags.toList(),
+                                ReportedTemperatures(
+                                    hasIced = reportIced,
+                                    hasWarm = reportWarm,
+                                    hasCold = reportCold,
+                                    hasHot = reportHot
+                                ).takeIf { it.hasAny }
                             )
                             comment = ""
                             selectedTags = emptySet()

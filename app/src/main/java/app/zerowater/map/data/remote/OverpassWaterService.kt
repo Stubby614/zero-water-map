@@ -115,10 +115,19 @@ class OverpassWaterService @Inject constructor(
             else -> if (tags["indoor"] == "yes") AccessType.SEMI_PUBLIC else AccessType.PUBLIC
         }
 
-        val hasHot = tags["hot_water"] == "yes" || tags["temperature"]?.contains("hot") == true || true
-        val hasWarm = true
-        val hasCold = tags["cold_water"] != "no"
-        val hasIced = tags["iced_water"] == "yes" || tags["cold_water"] == "yes"
+        // 只有 OSM 明確標記才視為有該水溫；四項皆未標記時歸類為 UNTAGGED（灰色待標記圖釘）
+        val hasIced = tags["iced"] == "yes" ||
+            tags["iced_water"] == "yes" ||
+            tags["drinking_water:cold"] == "iced"
+        val hasHot = tags["hot"] == "yes" ||
+            tags["hot_water"] == "yes" ||
+            tags["drinking_water:hot"] == "yes"
+        val hasWarm = tags["warm"] == "yes" ||
+            tags["warm_water"] == "yes" ||
+            tags["drinking_water:warm"] == "yes"
+        val hasCold = tags["cold"] == "yes" ||
+            tags["cold_water"] == "yes" ||
+            tags["drinking_water:cold"] == "yes"
         val openHours = tags["opening_hours"] ?: if (accessType == AccessType.PUBLIC) "24 小時開放" else "依場館開放時間"
         val is24Hours = openHours.contains("24/7") || openHours.contains("24 小時")
 

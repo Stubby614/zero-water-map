@@ -41,7 +41,7 @@ fun MapLibreView(
     routePoints: List<GeoPoint>,
     cameraTarget: CameraTargetEvent?,
     onStationClick: (WaterStation) -> Unit,
-    onCameraCenterChanged: (GeoPoint) -> Unit,
+    onCameraCenterChanged: (GeoPoint, Double) -> Unit,
     modifier: Modifier = Modifier,
     markerColorConfig: MarkerColorConfig = MarkerColorConfig(),
     initialCenter: LatLng = LatLng(25.0375, 121.5320),
@@ -107,7 +107,10 @@ fun MapLibreView(
                 map.addOnCameraIdleListener {
                     val target = map.cameraPosition.target
                     if (target != null) {
-                        onCameraCenterChanged(GeoPoint(target.latitude, target.longitude))
+                        onCameraCenterChanged(
+                            GeoPoint(target.latitude, target.longitude),
+                            map.cameraPosition.zoom
+                        )
                     }
                 }
             }

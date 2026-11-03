@@ -20,6 +20,7 @@ data class StationReview(
     val comment: String,
     val tags: List<String> = emptyList(),
     val photoUri: String? = null,
+    val reportedTemperatures: ReportedTemperatures? = null,
     val createdAtEpochMillis: Long = System.currentTimeMillis()
 )
 
