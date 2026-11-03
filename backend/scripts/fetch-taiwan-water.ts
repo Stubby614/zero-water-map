@@ -949,12 +949,13 @@ function osmElementToStation(el: OsmElement): WaterStation | null {
     tags["addr:floor"] ||
     "戶外 / 地面層公開區域";
 
-  // 僅在 OSM 有明確標記時才判定水溫，避免把未知誤判為「有冰水／有熱水」
+  // 僅在 OSM 有明確標記時才判定水溫，避免把未知誤判為「有冰水／有熱水／有冷水」。
+  // 四項皆為 false 的點位會歸類為 UNTAGGED（尚未標記水溫），由使用者評論協助補齊。
   const hasIced = tags.iced === "yes" || tags["drinking_water:cold"] === "iced";
   const hasHot = tags.hot === "yes" || tags["drinking_water:hot"] === "yes";
   const hasWarm =
     tags.warm === "yes" || tags["drinking_water:warm"] === "yes" || hasHot;
-  const hasCold = tags.cold !== "no";
+  const hasCold = tags.cold === "yes" || tags["drinking_water:cold"] === "yes";
 
   return {
     id: `osm-${el.type}-${el.id}`,
@@ -1069,6 +1070,22 @@ function distanceMeters(aLat: number, aLon: number, bLat: number, bLon: number):
   return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+/**
+ * 水溫分類（全端統一規則）：
+ * 0. 四項皆無標記 → UNTAGGED（尚未標記水溫）
+ * 1. 含冰水 → ICED_TRIPLE
+ * 2. 無冰水但有溫水＋熱水 → WARM_HOT
+ * 3. 其餘有標記者 → HOT_OR_SINGLE
+ */
+function temperatureCategoryOf(station: WaterStation): string {
+  if (!station.hasIced && !station.hasWarm && !station.hasHot && !station.hasCold) {
+    return "UNTAGGED";
+  }
+  if (station.hasIced) return "ICED_TRIPLE";
+  if (station.hasWarm && station.hasHot) return "WARM_HOT";
+  return "HOT_OR_SINGLE";
+}
+
 /** 合併策展點位、使用者貢獻點位與 OSM 點位，並以 30 公尺門檻去除重複 */
 function mergeStations(
   existing: WaterStation[],
@@ -1166,11 +1183,7 @@ export async function main() {
         hasWarm: station.hasWarm,
         hasCold: station.hasCold,
         hasIced: station.hasIced,
-        temperatureCategory: station.hasIced
-          ? "ICED_TRIPLE"
-          : station.hasWarm && station.hasHot
-          ? "WARM_HOT"
-          : "HOT_OR_SINGLE",
+        temperatureCategory: temperatureCategoryOf(station),
         is24Hours: station.is24Hours,
         openHours: station.openHours,
         status: station.status,

@@ -22,6 +22,14 @@ export interface WaterStation {
   lastVerifiedEpochMillis: number;
 }
 
+/** 評論者可一併回報該飲水機實際提供的水溫，用於補齊尚未標記的 OSM 點位 */
+export interface ReportedTemperatures {
+  hasIced?: boolean;
+  hasWarm?: boolean;
+  hasCold?: boolean;
+  hasHot?: boolean;
+}
+
 export interface StationReview {
   id: string;
   stationId: string;
@@ -116,6 +124,16 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/** 水溫分類（全端統一規則）；四項皆未標記 → UNTAGGED */
+function temperatureCategoryOf(station: WaterStation): string {
+  if (!station.hasIced && !station.hasWarm && !station.hasHot && !station.hasCold) {
+    return "UNTAGGED";
+  }
+  if (station.hasIced) return "ICED_TRIPLE";
+  if (station.hasWarm && station.hasHot) return "WARM_HOT";
+  return "HOT_OR_SINGLE";
+}
+
 function toGeoJsonFeatureCollection(stations: WaterStation[]) {
   return {
     type: "FeatureCollection",
@@ -141,6 +159,7 @@ function toGeoJsonFeatureCollection(stations: WaterStation[]) {
           hasWarm: s.hasWarm,
           hasCold: s.hasCold,
           hasIced: s.hasIced,
+          temperatureCategory: temperatureCategoryOf(s),
           is24Hours: s.is24Hours,
           openHours: s.openHours,
           status: s.status,
@@ -379,7 +398,9 @@ export async function handleRequest(req: Request, clientIp = "127.0.0.1"): Promi
     }
 
     if (req.method === "POST") {
-      const body = (await req.json().catch(() => null)) as Partial<StationReview> | null;
+      const body = (await req.json().catch(() => null)) as
+        | (Partial<StationReview> & { reportedTemperatures?: ReportedTemperatures })
+        | null;
       if (!body || typeof body.rating !== "number" || body.rating < 1 || body.rating > 5) {
         return jsonResponse({ error: "Rating must be between 1 and 5" }, 400);
       }
@@ -396,8 +417,34 @@ export async function handleRequest(req: Request, clientIp = "127.0.0.1"): Promi
         createdAtEpochMillis: Date.now(),
       };
       dataset.reviews.unshift(createdReview);
+
+      // 使用者於評論中回報了實際水溫 → 同步更新站點標記（灰釘立即轉為對應顏色）
+      const reported = body.reportedTemperatures;
+      let updatedStation: WaterStation | undefined;
+      if (
+        reported &&
+        typeof reported === "object" &&
+        (reported.hasIced === true ||
+          reported.hasWarm === true ||
+          reported.hasCold === true ||
+          reported.hasHot === true)
+      ) {
+        const station = dataset.stations.find((s) => s.id === stationId);
+        if (station) {
+          station.hasIced = reported.hasIced === true;
+          station.hasWarm = reported.hasWarm === true;
+          station.hasCold = reported.hasCold === true;
+          station.hasHot = reported.hasHot === true;
+          station.lastVerifiedEpochMillis = Date.now();
+          updatedStation = station;
+        }
+      }
+
       persistSnapshotBestEffort();
-      return jsonResponse(createdReview, 201);
+      return jsonResponse(
+        updatedStation ? { ...createdReview, updatedStation } : createdReview,
+        201
+      );
     }
   }
 

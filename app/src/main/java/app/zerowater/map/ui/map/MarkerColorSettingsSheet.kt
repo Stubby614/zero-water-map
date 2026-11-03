@@ -25,11 +25,13 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import app.zerowater.map.data.local.MarkerColorConfig
 import app.zerowater.map.data.local.MarkerColorOption
 import app.zerowater.map.data.local.PRESET_MARKER_COLORS
+import app.zerowater.map.data.local.RADIUS_OPTIONS_METERS
 import app.zerowater.map.data.model.TemperatureCategory
 
 @Composable
@@ -49,6 +52,9 @@ fun MarkerColorSettingsSheet(
     onSelectColor: (TemperatureCategory, String) -> Unit,
     onResetDefaults: () -> Unit,
     onDismiss: () -> Unit,
+    onToggleShowMarkers: (Boolean) -> Unit,
+    onToggleViewportOnly: (Boolean) -> Unit,
+    onSelectRadius: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -76,12 +82,12 @@ fun MarkerColorSettingsSheet(
                 )
                 Column {
                     Text(
-                        text = "地圖圖釘顏色設定",
+                        text = "地圖與顯示設定",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "依飲水機水溫分類自訂地圖圖釘顏色",
+                        text = "圖標顯示、載入範圍與水溫圖釘顏色",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -92,6 +98,68 @@ fun MarkerColorSettingsSheet(
                     imageVector = Icons.Default.Close,
                     contentDescription = "關閉設定"
                 )
+            }
+        }
+
+        // 顯示與效能設定
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "📌 圖標顯示與效能",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                SettingsSwitchRow(
+                    title = "在地圖上顯示飲水機圖標",
+                    description = "關閉後僅保留底圖與自己的定位點",
+                    checked = config.showMarkers,
+                    onCheckedChange = onToggleShowMarkers
+                )
+
+                SettingsSwitchRow(
+                    title = "僅載入滑動到的畫面區域",
+                    description = "縮放達 ${config.minZoomForPins.toInt()} 級以上才顯示畫面內的點位（類似 Google Maps 省電模式）",
+                    checked = config.viewportOnly,
+                    onCheckedChange = onToggleViewportOnly
+                )
+
+                Text(
+                    text = "📏 顯示方圓範圍（以地圖畫面中心為圓心）",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RADIUS_OPTIONS_METERS.forEach { meters ->
+                        FilterChip(
+                            selected = config.radiusMeters == meters,
+                            onClick = { onSelectRadius(meters) },
+                            label = {
+                                Text(
+                                    when (meters) {
+                                        0 -> "不限"
+                                        else -> if (meters >= 1000) "${meters / 1000} 公里" else "$meters 公尺"
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -133,6 +201,37 @@ fun MarkerColorSettingsSheet(
                 Text("完成")
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
     }
 }
 

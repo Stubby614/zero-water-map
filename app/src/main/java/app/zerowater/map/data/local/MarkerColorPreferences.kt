@@ -24,18 +24,28 @@ val PRESET_MARKER_COLORS = listOf(
     MarkerColorOption("森林綠", "#43A047"),
     MarkerColorOption("冰川青", "#00ACC1"),
     MarkerColorOption("極光紫", "#8E24AA"),
-    MarkerColorOption("櫻花粉", "#D81B60")
+    MarkerColorOption("櫻花粉", "#D81B60"),
+    MarkerColorOption("霧面灰", "#9E9E9E")
 )
+
+/** 顯示範圍半徑選項（0 = 不限，僅依目前視窗範圍） */
+val RADIUS_OPTIONS_METERS = listOf(0, 500, 1000, 2000, 5000)
 
 data class MarkerColorConfig(
     val icedColorHex: String = TemperatureCategory.ICED_TRIPLE.defaultColorHex,
     val warmHotColorHex: String = TemperatureCategory.WARM_HOT.defaultColorHex,
-    val hotOnlyColorHex: String = TemperatureCategory.HOT_OR_SINGLE.defaultColorHex
+    val hotOnlyColorHex: String = TemperatureCategory.HOT_OR_SINGLE.defaultColorHex,
+    val untaggedColorHex: String = TemperatureCategory.UNTAGGED.defaultColorHex,
+    val showMarkers: Boolean = true,
+    val viewportOnly: Boolean = true,
+    val radiusMeters: Int = 1000,
+    val minZoomForPins: Double = 13.0
 ) {
     fun hexFor(category: TemperatureCategory): String = when (category) {
         TemperatureCategory.ICED_TRIPLE -> icedColorHex
         TemperatureCategory.WARM_HOT -> warmHotColorHex
         TemperatureCategory.HOT_OR_SINGLE -> hotOnlyColorHex
+        TemperatureCategory.UNTAGGED -> untaggedColorHex
     }
 
     fun colorIntFor(category: TemperatureCategory): Int =
@@ -59,10 +69,18 @@ class MarkerColorPreferences @Inject constructor(
             ?: TemperatureCategory.WARM_HOT.defaultColorHex
         val hotOnly = prefs.getString("hot_only_color", TemperatureCategory.HOT_OR_SINGLE.defaultColorHex)
             ?: TemperatureCategory.HOT_OR_SINGLE.defaultColorHex
+        val untagged = prefs.getString("untagged_color", TemperatureCategory.UNTAGGED.defaultColorHex)
+            ?: TemperatureCategory.UNTAGGED.defaultColorHex
+        val defaults = MarkerColorConfig()
         return MarkerColorConfig(
             icedColorHex = iced,
             warmHotColorHex = warmHot,
-            hotOnlyColorHex = hotOnly
+            hotOnlyColorHex = hotOnly,
+            untaggedColorHex = untagged,
+            showMarkers = prefs.getBoolean("show_markers", defaults.showMarkers),
+            viewportOnly = prefs.getBoolean("viewport_only", defaults.viewportOnly),
+            radiusMeters = prefs.getInt("radius_meters", defaults.radiusMeters)
+                .takeIf { it in RADIUS_OPTIONS_METERS } ?: defaults.radiusMeters
         )
     }
 
@@ -71,8 +89,24 @@ class MarkerColorPreferences @Inject constructor(
             TemperatureCategory.ICED_TRIPLE -> "iced_color"
             TemperatureCategory.WARM_HOT -> "warm_hot_color"
             TemperatureCategory.HOT_OR_SINGLE -> "hot_only_color"
+            TemperatureCategory.UNTAGGED -> "untagged_color"
         }
         prefs.edit().putString(key, hex).apply()
+        _configFlow.update { readCurrentConfig() }
+    }
+
+    fun setShowMarkers(show: Boolean) {
+        prefs.edit().putBoolean("show_markers", show).apply()
+        _configFlow.update { readCurrentConfig() }
+    }
+
+    fun setViewportOnly(enabled: Boolean) {
+        prefs.edit().putBoolean("viewport_only", enabled).apply()
+        _configFlow.update { readCurrentConfig() }
+    }
+
+    fun setRadiusMeters(meters: Int) {
+        prefs.edit().putInt("radius_meters", meters).apply()
         _configFlow.update { readCurrentConfig() }
     }
 
@@ -81,6 +115,10 @@ class MarkerColorPreferences @Inject constructor(
             .remove("iced_color")
             .remove("warm_hot_color")
             .remove("hot_only_color")
+            .remove("untagged_color")
+            .remove("show_markers")
+            .remove("viewport_only")
+            .remove("radius_meters")
             .apply()
         _configFlow.update { readCurrentConfig() }
     }

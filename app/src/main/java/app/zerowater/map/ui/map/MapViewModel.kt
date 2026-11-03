@@ -12,6 +12,7 @@ import app.zerowater.map.data.location.GeoPoint
 import app.zerowater.map.data.location.GeocodingService
 import app.zerowater.map.data.location.LocationTracker
 import app.zerowater.map.data.model.AccessType
+import app.zerowater.map.data.model.ReportedTemperatures
 import app.zerowater.map.data.model.StationRatingSummary
 import app.zerowater.map.data.model.StationReview
 import app.zerowater.map.data.model.StationStatus
@@ -55,6 +56,7 @@ private data class InteractionState(
     val isPickingLocation: Boolean = false,
     val pickedLocation: GeoPoint = GeoPoint(25.0375, 121.5320),
     val pickedAddress: String? = null,
+    val cameraZoom: Double = 13.5,
     val addressSearchResults: List<AddressCandidate> = emptyList(),
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
@@ -68,6 +70,7 @@ private data class InteractionState(
 )
 data class MapUiState(
     val stations: List<WaterStation> = emptyList(),
+    val mapStations: List<WaterStation> = emptyList(),
     val filter: StationFilter = StationFilter(),
     val selectedStation: WaterStation? = null,
     val userLocation: GeoPoint? = null,
@@ -79,6 +82,7 @@ data class MapUiState(
     val isPickingLocation: Boolean = false,
     val pickedLocation: GeoPoint = GeoPoint(25.0375, 121.5320),
     val pickedAddress: String? = null,
+    val cameraZoom: Double = 13.5,
     val addressSearchResults: List<AddressCandidate> = emptyList(),
     val isSearchingAddress: Boolean = false,
     val showAddStationSheet: Boolean = false,
@@ -168,8 +172,22 @@ class MapViewModel @Inject constructor(
             }
         }.distinct()
 
+        // 滑到哪裡才出現：縮放不足或關閉顯示時傳空集合，避免上千個 Marker 拖垮地圖
+        val zoomTooLow = markerColors.viewportOnly && interaction.cameraZoom < markerColors.minZoomForPins
+        val mapStations = when {
+            !markerColors.showMarkers || zoomTooLow -> emptyList()
+            markerColors.radiusMeters > 0 -> {
+                val center = interaction.pickedLocation
+                filtered.filter {
+                    center.distanceMetersTo(it.latitude, it.longitude) <= markerColors.radiusMeters
+                }
+            }
+            else -> filtered
+        }
+
         MapUiState(
             stations = filtered,
+            mapStations = mapStations,
             filter = filter,
             selectedStation = selectedStation,
             userLocation = userLoc,
@@ -181,6 +199,7 @@ class MapViewModel @Inject constructor(
             isPickingLocation = interaction.isPickingLocation,
             pickedLocation = interaction.pickedLocation,
             pickedAddress = interaction.pickedAddress,
+            cameraZoom = interaction.cameraZoom,
             addressSearchResults = interaction.addressSearchResults,
             isSearchingAddress = interaction.isSearchingAddress,
             showAddStationSheet = interaction.showAddStationSheet,
@@ -385,8 +404,8 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun onMapCameraIdle(center: GeoPoint) {
-        interactionFlow.update { it.copy(pickedLocation = center) }
+    fun onMapCameraIdle(center: GeoPoint, zoom: Double = interactionFlow.value.cameraZoom) {
+        interactionFlow.update { it.copy(pickedLocation = center, cameraZoom = zoom) }
         if (interactionFlow.value.isPickingLocation) {
             refreshPickedAddress(center)
         }
@@ -522,7 +541,8 @@ class MapViewModel @Inject constructor(
         authorName: String,
         rating: Int,
         comment: String,
-        tags: List<String>
+        tags: List<String>,
+        reportedTemperatures: ReportedTemperatures? = null
     ) {
         val photoUri = interactionFlow.value.draftReviewPhotoUri
         val review = StationReview(
@@ -532,7 +552,8 @@ class MapViewModel @Inject constructor(
             rating = rating.coerceIn(1, 5),
             comment = comment.trim(),
             tags = tags,
-            photoUri = photoUri
+            photoUri = photoUri,
+            reportedTemperatures = reportedTemperatures?.takeIf { it.hasAny }
         )
         viewModelScope.launch {
             repository.addReview(review)
@@ -616,6 +637,18 @@ class MapViewModel @Inject constructor(
 
     fun updateMarkerColor(category: TemperatureCategory, hex: String) {
         markerColorPreferences.setCategoryColor(category, hex)
+    }
+
+    fun setShowMarkers(show: Boolean) {
+        markerColorPreferences.setShowMarkers(show)
+    }
+
+    fun setViewportOnly(enabled: Boolean) {
+        markerColorPreferences.setViewportOnly(enabled)
+    }
+
+    fun setRadiusMeters(meters: Int) {
+        markerColorPreferences.setRadiusMeters(meters)
     }
 
     fun resetMarkerColors() {

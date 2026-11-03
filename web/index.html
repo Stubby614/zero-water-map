@@ -36,14 +36,9 @@
           <span id="station-count-badge" class="count-badge">0</span>
         </div>
 
-        <button id="legend-btn" class="legend-capsule" title="設定圖釘顏色">
-          <span class="legend-dot dot-iced" id="dot-iced-legend"></span>
-          <span class="legend-label">冰溫熱</span>
-          <span class="legend-dot dot-warm" id="dot-warm-legend"></span>
-          <span class="legend-label">溫熱水</span>
-          <span class="legend-dot dot-hot" id="dot-hot-legend"></span>
-          <span class="legend-label">熱水</span>
-          <span class="legend-icon">🎨</span>
+        <button id="btn-open-settings" class="settings-capsule" title="地圖與顯示設定" aria-label="地圖與顯示設定">
+          <span class="settings-icon">⚙️</span>
+          <span class="settings-label">設定</span>
         </button>
       </div>
 
@@ -58,6 +53,7 @@
       </div>
 
       <!-- Realtime Feedback Banners -->
+      <div id="zoom-hint-banner" class="status-banner hidden" role="status"></div>
       <div id="osm-banner" class="status-banner hidden"></div>
       <div id="nearest-banner" class="nearest-banner hidden">
         <div class="nearest-info">
@@ -163,6 +159,16 @@
             <!-- Populated from QUICK_REVIEW_TAGS -->
           </div>
 
+          <div class="review-temp-report" id="review-temp-report-box">
+            <div class="temp-report-title">🌡️ 協助標記／更新此飲水機水溫（選填，送出後更新圖釘顏色）：</div>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" id="rev-temp-iced"> ❄️ 冰水</label>
+              <label class="checkbox-item"><input type="checkbox" id="rev-temp-warm"> 🍵 溫水</label>
+              <label class="checkbox-item"><input type="checkbox" id="rev-temp-cold"> 💧 常溫冷水</label>
+              <label class="checkbox-item"><input type="checkbox" id="rev-temp-hot"> ♨️ 熱水 (可泡麵)</label>
+            </div>
+          </div>
+
           <div class="form-row">
             <input type="text" id="review-author" class="form-input" placeholder="您的暱稱 (預設: 租屋拎水客)" maxlength="30">
           </div>
@@ -210,6 +216,7 @@
         <button class="list-tab-chip" data-tab="iced">冰溫熱</button>
         <button class="list-tab-chip" data-tab="warm">溫熱水</button>
         <button class="list-tab-chip" data-tab="hot">純熱水</button>
+        <button class="list-tab-chip" data-tab="untagged">待標記</button>
       </div>
 
       <div id="station-list-items" class="station-list-container">
@@ -294,43 +301,92 @@
       </div>
     </section>
 
-    <!-- 4. Marker Color Settings Modal -->
-    <div id="color-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="地圖圖釘顏色設定">
+    <!-- 4. Map & Display Settings Modal -->
+    <div id="color-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="地圖與顯示設定">
       <div class="modal-card">
         <div class="modal-header">
-          <h3 class="modal-title">🎨 地圖圖釘顏色設定</h3>
+          <h3 class="modal-title">⚙️ 地圖與顯示設定</h3>
           <button id="btn-close-color" class="btn-icon">✕</button>
         </div>
         <div class="modal-body">
-          <p class="modal-desc">可依個人喜好自訂三種水溫等級在地圖上的顯示顏色：</p>
+          <!-- 1. Marker visibility & performance -->
+          <div class="settings-section">
+            <div class="settings-section-title">📌 圖標顯示與效能</div>
 
-          <div class="color-setting-item">
-            <div class="color-setting-title">
-              <span class="preview-dot" id="dot-iced-preview"></span>
-              <strong>含冰水（冰／溫／熱）</strong>
-            </div>
-            <div class="palette-grid" data-category="ICED_TRIPLE" id="palette-iced">
-              <!-- 8 colors -->
-            </div>
+            <label class="switch-row">
+              <span class="switch-copy">
+                <span class="switch-title">在地圖上顯示飲水機圖標</span>
+                <span class="switch-desc">關閉後僅保留底圖與自己的定位點</span>
+              </span>
+              <input type="checkbox" id="toggle-show-markers" class="switch-input" checked>
+              <span class="switch-track"></span>
+            </label>
+
+            <label class="switch-row">
+              <span class="switch-copy">
+                <span class="switch-title">僅載入滑動到的畫面區域</span>
+                <span class="switch-desc">Zoom ≥ 13 且滑到哪裡才顯示哪裡的點位（類似 Google Maps 省電模式）</span>
+              </span>
+              <input type="checkbox" id="toggle-viewport-only" class="switch-input" checked>
+              <span class="switch-track"></span>
+            </label>
           </div>
 
-          <div class="color-setting-item">
-            <div class="color-setting-title">
-              <span class="preview-dot" id="dot-warm-preview"></span>
-              <strong>溫熱水（溫水＋熱水）</strong>
+          <!-- 2. Radius -->
+          <div class="settings-section">
+            <div class="settings-section-title">📏 顯示方圓距離範圍（以地圖畫面中心為圓心）</div>
+            <div class="chip-selector" id="radius-selector">
+              <button class="select-chip" data-radius="0">不限</button>
+              <button class="select-chip" data-radius="500">500 公尺</button>
+              <button class="select-chip" data-radius="1000">1 公里</button>
+              <button class="select-chip" data-radius="2000">2 公里</button>
+              <button class="select-chip" data-radius="5000">5 公里</button>
             </div>
-            <div class="palette-grid" data-category="WARM_HOT" id="palette-warm">
-              <!-- 8 colors -->
-            </div>
+            <p class="modal-desc">「不限」僅依目前視窗範圍顯示；選擇距離後地圖上會出現淡藍色虛線範圍圈。</p>
           </div>
 
-          <div class="color-setting-item">
-            <div class="color-setting-title">
-              <span class="preview-dot" id="dot-hot-preview"></span>
-              <strong>純熱水／單溫</strong>
+          <!-- 3. Marker color palettes (4 categories) -->
+          <div class="settings-section">
+            <div class="settings-section-title">🎨 圖釘顏色自訂（4 大分類）</div>
+
+            <div class="color-setting-item">
+              <div class="color-setting-title">
+                <span class="preview-dot" id="dot-iced-preview"></span>
+                <strong>含冰水（冰／溫／熱）</strong>
+              </div>
+              <div class="palette-grid" data-category="ICED_TRIPLE" id="palette-iced">
+                <!-- 9 colors -->
+              </div>
             </div>
-            <div class="palette-grid" data-category="HOT_OR_SINGLE" id="palette-hot">
-              <!-- 8 colors -->
+
+            <div class="color-setting-item">
+              <div class="color-setting-title">
+                <span class="preview-dot" id="dot-warm-preview"></span>
+                <strong>溫熱水（溫水＋熱水）</strong>
+              </div>
+              <div class="palette-grid" data-category="WARM_HOT" id="palette-warm">
+                <!-- 9 colors -->
+              </div>
+            </div>
+
+            <div class="color-setting-item">
+              <div class="color-setting-title">
+                <span class="preview-dot" id="dot-hot-preview"></span>
+                <strong>純熱水／單溫</strong>
+              </div>
+              <div class="palette-grid" data-category="HOT_OR_SINGLE" id="palette-hot">
+                <!-- 9 colors -->
+              </div>
+            </div>
+
+            <div class="color-setting-item">
+              <div class="color-setting-title">
+                <span class="preview-dot" id="dot-untagged-preview"></span>
+                <strong>尚未標記水溫（待回報）</strong>
+              </div>
+              <div class="palette-grid" data-category="UNTAGGED" id="palette-untagged">
+                <!-- 9 colors -->
+              </div>
             </div>
           </div>
         </div>

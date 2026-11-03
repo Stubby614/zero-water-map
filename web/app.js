@@ -19,13 +19,25 @@ const PRESET_MARKER_COLORS = [
   { name: "冰川青", hex: "#00ACC1" },
   { name: "極光紫", hex: "#8E24AA" },
   { name: "櫻花粉", hex: "#D81B60" },
+  { name: "霧面灰", hex: "#9E9E9E" },
 ];
 
 const DEFAULT_CATEGORY_COLORS = {
   ICED_TRIPLE: "#1E88E5",
   WARM_HOT: "#FDD835",
   HOT_OR_SINGLE: "#E53935",
+  UNTAGGED: "#9E9E9E",
 };
+
+/** 地圖顯示設定預設值：僅載入畫面中心 1 公里內且縮放 ≥ 13 的點位 */
+const DEFAULT_MAP_SETTINGS = {
+  showMarkers: true,
+  viewportOnly: true,
+  minZoomForPins: 13,
+  radiusMeters: 1000,
+};
+
+const RADIUS_OPTIONS = [0, 500, 1000, 2000, 5000];
 
 const QUICK_REVIEW_TAGS = [
   "無異味好喝",
@@ -43,6 +55,7 @@ const STORAGE_KEYS = {
   FAVORITES: "zero_water_favorites",
   LOCAL_STATIONS: "zero_water_local_stations",
   LOCAL_REVIEWS: "zero_water_local_reviews",
+  MAP_SETTINGS: "zero_water_map_settings",
 };
 
 // ============================================================================
@@ -54,6 +67,8 @@ const state = {
   reviews: [],
   favorites: new Set(),
   markerColors: { ...DEFAULT_CATEGORY_COLORS },
+  mapSettings: { ...DEFAULT_MAP_SETTINGS },
+  renderedStationCount: 0,
   userLocation: null, // [lng, lat]
   userMarker: null,
   layersReady: false,
@@ -97,6 +112,9 @@ function formatDistance(meters) {
 }
 
 function getTemperatureCategory(station) {
+  if (!station.hasIced && !station.hasWarm && !station.hasHot && !station.hasCold) {
+    return "UNTAGGED";
+  }
   if (station.hasIced) return "ICED_TRIPLE";
   if (station.hasWarm && station.hasHot) return "WARM_HOT";
   return "HOT_OR_SINGLE";
@@ -114,6 +132,8 @@ function getCategoryLabel(category) {
       return "溫熱水";
     case "HOT_OR_SINGLE":
       return "熱水/單溫";
+    case "UNTAGGED":
+      return "尚未標記水溫";
     default:
       return "飲水機";
   }
@@ -196,7 +216,16 @@ const DataSyncService = {
     } catch (e) {
       console.warn("載入顏色設定失敗", e);
     }
-    this.applyCssThemeVariables();
+
+    // 讀取地圖顯示設定
+    try {
+      const savedSettings = localStorage.getItem(STORAGE_KEYS.MAP_SETTINGS);
+      if (savedSettings) {
+        state.mapSettings = { ...DEFAULT_MAP_SETTINGS, ...JSON.parse(savedSettings) };
+      }
+    } catch (e) {
+      console.warn("載入地圖顯示設定失敗", e);
+    }
 
     // 讀取收藏
     try {
@@ -209,17 +238,14 @@ const DataSyncService = {
     }
   },
 
-  applyCssThemeVariables() {
-    const root = document.documentElement;
-    root.style.setProperty("--temp-iced", state.markerColors.ICED_TRIPLE);
-    root.style.setProperty("--temp-warm", state.markerColors.WARM_HOT);
-    root.style.setProperty("--temp-hot", state.markerColors.HOT_OR_SINGLE);
+  saveMapSettings(settings) {
+    state.mapSettings = { ...state.mapSettings, ...settings };
+    localStorage.setItem(STORAGE_KEYS.MAP_SETTINGS, JSON.stringify(state.mapSettings));
   },
 
   saveColors(colors) {
     state.markerColors = { ...colors };
     localStorage.setItem(STORAGE_KEYS.MARKER_COLORS, JSON.stringify(state.markerColors));
-    this.applyCssThemeVariables();
   },
 
   toggleFavorite(stationId) {
@@ -515,6 +541,11 @@ const ExternalServices = {
       const level = tags.level || tags["addr:floor"];
       const floorHint = level ? `${level}F 飲水區` : "1F 飲水機";
 
+      // 與後端／Android 相同：只有 OSM 明確標記才視為有該水溫，否則歸類為 UNTAGGED
+      const hasIced = tags.iced === "yes" || tags["drinking_water:cold"] === "iced";
+      const hasHot = tags.hot === "yes" || tags["drinking_water:hot"] === "yes";
+      const hasWarm = tags.warm === "yes" || tags["drinking_water:warm"] === "yes";
+
       discovered.push({
         id: `osm-${el.type}-${el.id}`,
         name,
@@ -522,10 +553,10 @@ const ExternalServices = {
         longitude,
         floorHint,
         accessType: tags.access === "private" ? "RESTRICTED" : "PUBLIC",
-        hasHot: tags.bottle === "yes" || tags.fee === "no" || true,
-        hasWarm: true,
-        hasCold: true,
-        hasIced: tags.chilled === "yes" || false,
+        hasHot,
+        hasWarm,
+        hasCold: tags.cold === "yes" || tags["drinking_water:cold"] === "yes",
+        hasIced,
         is24Hours: tags.opening_hours === "24/7",
         openHours: tags.opening_hours || "全天開放",
         status: "WORKING",
@@ -580,6 +611,7 @@ const PIN_ICON_IDS = {
   ICED_TRIPLE: "zw-pin-iced-triple",
   WARM_HOT: "zw-pin-warm-hot",
   HOT_OR_SINGLE: "zw-pin-hot-single",
+  UNTAGGED: "zw-pin-untagged",
 };
 
 /**
@@ -632,16 +664,13 @@ function syncPinImages() {
   }
 }
 
-/** 同步頂部圖例與調色盤預覽的色點 */
+/** 同步設定對話框調色盤預覽的色點 */
 function syncLegendDots() {
-  document.getElementById("dot-iced-legend").style.backgroundColor = state.markerColors.ICED_TRIPLE;
-  document.getElementById("dot-warm-legend").style.backgroundColor = state.markerColors.WARM_HOT;
-  document.getElementById("dot-hot-legend").style.backgroundColor = state.markerColors.HOT_OR_SINGLE;
-
   const previews = {
     "dot-iced-preview": state.markerColors.ICED_TRIPLE,
     "dot-warm-preview": state.markerColors.WARM_HOT,
     "dot-hot-preview": state.markerColors.HOT_OR_SINGLE,
+    "dot-untagged-preview": state.markerColors.UNTAGGED,
   };
   for (const [id, color] of Object.entries(previews)) {
     const el = document.getElementById(id);
@@ -655,6 +684,10 @@ function updateMarkerColorsOnMap() {
 }
 
 function filterStations() {
+  const settings = state.mapSettings;
+  const center = state.map ? state.map.getCenter() : null;
+  const bounds = state.map ? state.map.getBounds() : null;
+
   return state.stations.filter((station) => {
     if (station.status === "REMOVED") return false;
     if (state.activeFilters.favorite && !state.favorites.has(station.id)) return false;
@@ -662,7 +695,68 @@ function filterStations() {
     if (state.activeFilters.iced && !station.hasIced) return false;
     if (state.activeFilters.hot && !station.hasHot) return false;
     if (state.activeFilters["24h"] && !station.is24Hours) return false;
+
+    // 滑到哪裡才出現：僅保留目前視窗看得到的點位（O(1) 經緯度比較）
+    if (settings.viewportOnly && bounds && !bounds.contains([station.longitude, station.latitude])) {
+      return false;
+    }
+    // 以地圖畫面中心為圓心的方圓距離過濾
+    if (
+      settings.radiusMeters > 0 &&
+      center &&
+      haversineMeters(center.lat, center.lng, station.latitude, station.longitude) >
+        settings.radiusMeters
+    ) {
+      return false;
+    }
     return true;
+  });
+}
+
+/** 目前縮放層級是否足以顯示圖釘（Zoom 太低時整片點位只會糊成一團） */
+function isZoomHighEnoughForPins() {
+  if (!state.map) return false;
+  return state.map.getZoom() >= state.mapSettings.minZoomForPins;
+}
+
+/** 以 64 點座標近似目前畫面中心的方圓範圍圈 */
+function buildRadiusCircle(center, radiusMeters, steps = 64) {
+  const R = 6371000;
+  const latRad = (center.lat * Math.PI) / 180;
+  const ring = [];
+  for (let i = 0; i <= steps; i++) {
+    const bearing = (i / steps) * 2 * Math.PI;
+    const dLat = (radiusMeters * Math.cos(bearing)) / R;
+    const dLng = (radiusMeters * Math.sin(bearing)) / (R * Math.cos(latRad));
+    ring.push([
+      center.lng + (dLng * 180) / Math.PI,
+      center.lat + (dLat * 180) / Math.PI,
+    ]);
+  }
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: [ring] },
+  };
+}
+
+function syncRadiusRing() {
+  if (!state.map) return;
+  const source = state.map.getSource("radius-circle");
+  if (!source) return;
+
+  const shouldShow =
+    state.mapSettings.showMarkers &&
+    isZoomHighEnoughForPins() &&
+    state.mapSettings.radiusMeters > 0;
+  if (!shouldShow) {
+    source.setData({ type: "FeatureCollection", features: [] });
+    return;
+  }
+  const center = state.map.getCenter();
+  source.setData({
+    type: "FeatureCollection",
+    features: [buildRadiusCircle(center, state.mapSettings.radiusMeters)],
   });
 }
 
@@ -687,6 +781,24 @@ function initStationLayers() {
   state.layersReady = true;
   syncPinImages();
   syncLegendDots();
+
+  // 方圓範圍圈（淡藍虛線），繪製在圖釘下方
+  state.map.addSource("radius-circle", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  state.map.addLayer({
+    id: "zw-radius-ring",
+    type: "line",
+    source: "radius-circle",
+    layout: { "line-join": "round" },
+    paint: {
+      "line-color": "#1E88E5",
+      "line-width": 1.5,
+      "line-opacity": 0.55,
+      "line-dasharray": [3, 2],
+    },
+  });
 
   state.map.addSource(STATIONS_SOURCE_ID, {
     type: "geojson",
@@ -745,6 +857,8 @@ function initStationLayers() {
         PIN_ICON_IDS.ICED_TRIPLE,
         "WARM_HOT",
         PIN_ICON_IDS.WARM_HOT,
+        "UNTAGGED",
+        PIN_ICON_IDS.UNTAGGED,
         PIN_ICON_IDS.HOT_OR_SINGLE,
       ],
       "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 13, 0.8, 18, 1.1],
@@ -787,14 +901,42 @@ function initStationLayers() {
   }
 }
 
-/** 依目前篩選條件更新圖層資料（不重建圖層，數千點位仍維持流暢） */
+/** 依目前篩選條件、視窗範圍與顯示設定更新圖層資料（不重建圖層，數千點位仍維持流暢） */
 function renderAllMarkers() {
-  const filtered = filterStations();
-  const source = state.map?.getSource(STATIONS_SOURCE_ID);
+  if (!state.map) return;
+  const settings = state.mapSettings;
+  const source = state.map.getSource(STATIONS_SOURCE_ID);
+
+  const zoomTooLow = settings.viewportOnly && !isZoomHighEnoughForPins();
+  let filtered;
+  if (!settings.showMarkers || zoomTooLow) {
+    // 完全隱藏或縮放不足：送出空集合，零圖釘渲染負擔
+    filtered = [];
+  } else {
+    filtered = filterStations();
+  }
+
   if (source) source.setData(toFeatureCollection(filtered));
+  state.renderedStationCount = filtered.length;
 
   document.getElementById("station-count-badge").textContent = filtered.length;
   document.getElementById("list-badge").textContent = filtered.length;
+
+  // 輕量提示：目前視野太廣，提示放大地圖
+  const zoomHint = document.getElementById("zoom-hint-banner");
+  if (zoomHint) {
+    if (!settings.showMarkers) {
+      zoomHint.textContent = "🙈 已隱藏飲水機圖標，可於 ⚙️ 設定重新開啟";
+      zoomHint.classList.remove("hidden");
+    } else if (zoomTooLow) {
+      zoomHint.textContent = `🔍 放大地圖至 ${settings.minZoomForPins} 級以上，以顯示此區域飲水機`;
+      zoomHint.classList.remove("hidden");
+    } else {
+      zoomHint.classList.add("hidden");
+    }
+  }
+
+  syncRadiusRing();
 }
 
 function clearWalkingRoute() {
@@ -863,6 +1005,43 @@ function closeAllSheets() {
   clearWalkingRoute();
 }
 
+/** 渲染詳情面板的水溫／樓層／權限標籤（水溫回報後可單獨重繪） */
+function renderDetailTags(station) {
+  const tagsContainer = document.getElementById("detail-tags");
+  if (!tagsContainer) return;
+  const category = getTemperatureCategory(station);
+  const color = getCategoryColor(category);
+
+  tagsContainer.innerHTML = `
+    <span class="meta-chip meta-chip-temp" style="background-color: ${color}">
+      ● ${getCategoryLabel(category)}
+    </span>
+    <span class="meta-chip">🏢 ${station.floorHint || "1F 飲水機"}</span>
+    <span class="meta-chip">🚪 ${getAccessLabel(station.accessType)}</span>
+    <span class="meta-chip">🕒 ${station.is24Hours ? "24H 全天開放" : station.openHours || "依場館時間"}</span>
+  `;
+}
+
+/** 依站點目前的水溫標記預填「協助標記水溫」勾選框 */
+function syncReviewTemperatureInputs(station) {
+  const box = document.getElementById("review-temp-report-box");
+  if (!box) return;
+  const isUntagged = getTemperatureCategory(station) === "UNTAGGED";
+
+  document.getElementById("rev-temp-iced").checked = Boolean(station.hasIced);
+  document.getElementById("rev-temp-warm").checked = Boolean(station.hasWarm);
+  document.getElementById("rev-temp-cold").checked = Boolean(station.hasCold);
+  document.getElementById("rev-temp-hot").checked = Boolean(station.hasHot);
+
+  box.classList.toggle("untagged-hint", isUntagged);
+  const titleEl = box.querySelector(".temp-report-title");
+  if (titleEl) {
+    titleEl.textContent = isUntagged
+      ? "🌡️ 此點位尚未標記水溫，歡迎勾選實際提供的水溫（送出後圖釘立即變色）："
+      : "🌡️ 協助更新此飲水機水溫（選填，送出後更新圖釘顏色）：";
+  }
+}
+
 async function selectStation(station) {
   state.selectedStation = station;
   closeAllSheets();
@@ -879,7 +1058,6 @@ async function selectStation(station) {
   const sheet = document.getElementById("detail-sheet");
   const nameEl = document.getElementById("detail-name");
   const statusCapsule = document.getElementById("detail-status-capsule");
-  const tagsContainer = document.getElementById("detail-tags");
   const favBtn = document.getElementById("btn-toggle-favorite");
 
   nameEl.textContent = station.name;
@@ -892,18 +1070,9 @@ async function selectStation(station) {
   favBtn.textContent = isFav ? "❤️" : "🤍";
   favBtn.classList.toggle("favorited", isFav);
 
-  // 屬性標籤
-  const category = getTemperatureCategory(station);
-  const color = getCategoryColor(category);
-
-  tagsContainer.innerHTML = `
-    <span class="meta-chip meta-chip-temp" style="background-color: ${color}">
-      ● ${getCategoryLabel(category)}
-    </span>
-    <span class="meta-chip">🏢 ${station.floorHint || "1F 飲水機"}</span>
-    <span class="meta-chip">🚪 ${getAccessLabel(station.accessType)}</span>
-    <span class="meta-chip">🕒 ${station.is24Hours ? "24H 全天開放" : station.openHours || "依場館時間"}</span>
-  `;
+  // 屬性標籤 + 水溫回報勾選框預填
+  renderDetailTags(station);
+  syncReviewTemperatureInputs(station);
 
   // Google Maps 導航按鈕連結
   const googleNav = document.getElementById("btn-google-nav");
@@ -1030,12 +1199,16 @@ function renderStationListItems() {
   // 分頁過濾
   if (state.currentListTab === "favorite") {
     list = list.filter((s) => state.favorites.has(s.id));
-  } else if (state.currentListTab === "iced") {
-    list = list.filter((s) => s.hasIced);
-  } else if (state.currentListTab === "warm") {
-    list = list.filter((s) => s.hasWarm && s.hasHot && !s.hasIced);
-  } else if (state.currentListTab === "hot") {
-    list = list.filter((s) => !s.hasIced && !(s.hasWarm && s.hasHot));
+  } else if (state.currentListTab !== "all") {
+    const tabCategory = {
+      iced: "ICED_TRIPLE",
+      warm: "WARM_HOT",
+      hot: "HOT_OR_SINGLE",
+      untagged: "UNTAGGED",
+    }[state.currentListTab];
+    if (tabCategory) {
+      list = list.filter((s) => getTemperatureCategory(s) === tabCategory);
+    }
   }
 
   // 搜尋過濾
@@ -1142,25 +1315,39 @@ async function updateAddPickerPosition() {
 function openColorPreferencesModal() {
   closeAllSheets();
   renderColorPaletteOptions();
+  renderMapSettingsControls();
   document.getElementById("color-modal").classList.remove("hidden");
   showBackdrop(true);
 }
 
+/** 同步設定對話框中的開關與範圍晶片狀態 */
+function renderMapSettingsControls() {
+  const settings = state.mapSettings;
+  document.getElementById("toggle-show-markers").checked = settings.showMarkers;
+  document.getElementById("toggle-viewport-only").checked = settings.viewportOnly;
+
+  document.querySelectorAll("#radius-selector .select-chip").forEach((chip) => {
+    chip.classList.toggle("active", Number(chip.dataset.radius) === settings.radiusMeters);
+  });
+}
+
 function renderColorPaletteOptions() {
-  const categories = ["ICED_TRIPLE", "WARM_HOT", "HOT_OR_SINGLE"];
+  const categories = ["ICED_TRIPLE", "WARM_HOT", "HOT_OR_SINGLE", "UNTAGGED"];
   const ids = {
     ICED_TRIPLE: "palette-iced",
     WARM_HOT: "palette-warm",
     HOT_OR_SINGLE: "palette-hot",
+    UNTAGGED: "palette-untagged",
   };
 
   for (const cat of categories) {
     const container = document.getElementById(ids[cat]);
-    const currentColor = state.markerColors[cat];
+    if (!container) continue;
+    const currentColor = state.markerColors[cat] || DEFAULT_CATEGORY_COLORS[cat];
 
     container.innerHTML = PRESET_MARKER_COLORS.map(
       (opt) => `
-        <div class="palette-swatch ${opt.hex.toUpperCase() === currentColor.toUpperCase() ? "active" : ""}"
+        <div class="palette-swatch ${opt.hex.toUpperCase() === String(currentColor).toUpperCase() ? "active" : ""}"
              style="background-color: ${opt.hex}"
              title="${opt.name}"
              onclick="selectPaletteColor('${cat}', '${opt.hex}')">
@@ -1215,6 +1402,15 @@ async function initApp() {
         updateAddPickerPosition();
       }, 250);
     }
+  });
+
+  // 滑到哪裡才出現：地圖停止移動後（節流 120ms）重新載入目前視窗／範圍內的點位
+  let moveEndTimeout = null;
+  state.map.on("moveend", () => {
+    clearTimeout(moveEndTimeout);
+    moveEndTimeout = setTimeout(() => {
+      renderAllMarkers();
+    }, 120);
   });
 
   state.map.on("click", (event) => {
@@ -1302,9 +1498,27 @@ function bindEventHandlers() {
     });
   });
 
-  // 圖釘調色盤按鈕
-  document.getElementById("legend-btn").addEventListener("click", () => {
+  // ⚙️ 地圖與顯示設定對話框
+  document.getElementById("btn-open-settings").addEventListener("click", () => {
     openColorPreferencesModal();
+  });
+
+  document.getElementById("toggle-show-markers").addEventListener("change", (e) => {
+    DataSyncService.saveMapSettings({ showMarkers: e.target.checked });
+    renderAllMarkers();
+  });
+
+  document.getElementById("toggle-viewport-only").addEventListener("change", (e) => {
+    DataSyncService.saveMapSettings({ viewportOnly: e.target.checked });
+    renderAllMarkers();
+  });
+
+  document.querySelectorAll("#radius-selector .select-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      DataSyncService.saveMapSettings({ radiusMeters: Number(chip.dataset.radius) });
+      renderMapSettingsControls();
+      renderAllMarkers();
+    });
   });
 
   // FAB 按鈕群
@@ -1439,6 +1653,15 @@ function bindEventHandlers() {
     const comment = document.getElementById("review-comment").value.trim();
     const tags = Array.from(state.selectedReviewTags);
 
+    // 使用者協助標記的水溫（至少勾選一項才會隨評論回報）
+    const reportedTemperatures = {
+      hasIced: document.getElementById("rev-temp-iced").checked,
+      hasWarm: document.getElementById("rev-temp-warm").checked,
+      hasCold: document.getElementById("rev-temp-cold").checked,
+      hasHot: document.getElementById("rev-temp-hot").checked,
+    };
+    const hasTemperatureReport = Object.values(reportedTemperatures).some(Boolean);
+
     const payload = {
       authorName: author,
       userName: author,
@@ -1446,6 +1669,7 @@ function bindEventHandlers() {
       comment: comment || "點位出水正常！",
       tags,
       photoUri: state.reviewPhotoDataUrl || null,
+      ...(hasTemperatureReport ? { reportedTemperatures } : {}),
     };
 
     const submitBtn = document.getElementById("btn-submit-review");
@@ -1453,7 +1677,23 @@ function bindEventHandlers() {
     submitBtn.textContent = "傳送中...";
 
     try {
-      await DataSyncService.addReview(state.selectedStation.id, payload);
+      const created = await DataSyncService.addReview(state.selectedStation.id, payload);
+
+      // 灰釘立即變色：以伺服器回傳的最新站點為準，離線時退回本地套用
+      let temperatureChanged = false;
+      if (hasTemperatureReport) {
+        const station =
+          state.stations.find((s) => s.id === state.selectedStation.id) || state.selectedStation;
+        const updated = created?.updatedStation;
+        Object.assign(station, updated || reportedTemperatures);
+        if (!updated) station.lastVerifiedEpochMillis = Date.now();
+        state.selectedStation = station;
+        renderDetailTags(station);
+        syncReviewTemperatureInputs(station);
+        renderAllMarkers();
+        temperatureChanged = true;
+      }
+
       renderReviews(state.selectedStation.id);
       renderPhotoGallery(state.selectedStation);
 
@@ -1465,7 +1705,11 @@ function bindEventHandlers() {
       state.selectedReviewTags.clear();
       tagsContainer.querySelectorAll(".tag-chip").forEach((c) => c.classList.remove("selected"));
 
-      alert("評價發布成功！已同步至拎水資料庫。");
+      alert(
+        temperatureChanged
+          ? "評價發布成功！已同步水溫標記，圖釘顏色已更新。"
+          : "評價發布成功！已同步至拎水資料庫。"
+      );
     } catch (err) {
       alert("評價送出失敗：" + err.message);
     } finally {
