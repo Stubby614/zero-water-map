@@ -1272,15 +1272,6 @@ body, html {
   color: #0D47A1;
 }
 
-.review-temp-report.untagged-hint {
-  background: #FFFDE7;
-  border-color: #FBC02D;
-}
-
-.review-temp-report.untagged-hint .temp-report-title {
-  color: #8D6E00;
-}
-
 .modal-desc {
   font-size: 13px;
   color: var(--text-secondary);

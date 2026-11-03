@@ -26,7 +26,6 @@ const DEFAULT_CATEGORY_COLORS = {
   ICED_TRIPLE: "#1E88E5",
   WARM_HOT: "#FDD835",
   HOT_OR_SINGLE: "#E53935",
-  UNTAGGED: "#9E9E9E",
 };
 
 /** 地圖顯示設定預設值：僅載入畫面中心 1 公里內且縮放 ≥ 13 的點位 */
@@ -112,11 +111,12 @@ function formatDistance(meters) {
 }
 
 function getTemperatureCategory(station) {
-  if (!station.hasIced && !station.hasWarm && !station.hasHot && !station.hasCold) {
-    return "UNTAGGED";
-  }
   if (station.hasIced) return "ICED_TRIPLE";
   if (station.hasWarm && station.hasHot) return "WARM_HOT";
+  // 完全没有水溫標記者，依現地慣例（場館與戶外飲水機普遍有溫水）視為溫熱水
+  if (!station.hasWarm && !station.hasHot && !station.hasIced && !station.hasCold) {
+    return "WARM_HOT";
+  }
   return "HOT_OR_SINGLE";
 }
 
@@ -132,8 +132,6 @@ function getCategoryLabel(category) {
       return "溫熱水";
     case "HOT_OR_SINGLE":
       return "熱水/單溫";
-    case "UNTAGGED":
-      return "尚未標記水溫";
     default:
       return "飲水機";
   }
@@ -541,10 +539,12 @@ const ExternalServices = {
       const level = tags.level || tags["addr:floor"];
       const floorHint = level ? `${level}F 飲水區` : "1F 飲水機";
 
-      // 與後端／Android 相同：只有 OSM 明確標記才視為有該水溫，否則歸類為 UNTAGGED
+      // 與後端／Android 相同：OSM 明確標記優先；完全没有水溫標籤時視為「溫水＋熱水」
       const hasIced = tags.iced === "yes" || tags["drinking_water:cold"] === "iced";
-      const hasHot = tags.hot === "yes" || tags["drinking_water:hot"] === "yes";
-      const hasWarm = tags.warm === "yes" || tags["drinking_water:warm"] === "yes";
+      const hasHotTag = tags.hot === "yes" || tags["drinking_water:hot"] === "yes";
+      const hasWarmTag = tags.warm === "yes" || tags["drinking_water:warm"] === "yes";
+      const hasCold = tags.cold === "yes" || tags["drinking_water:cold"] === "yes";
+      const hasAnyTemperatureTag = hasIced || hasHotTag || hasWarmTag || hasCold;
 
       discovered.push({
         id: `osm-${el.type}-${el.id}`,
@@ -553,9 +553,9 @@ const ExternalServices = {
         longitude,
         floorHint,
         accessType: tags.access === "private" ? "RESTRICTED" : "PUBLIC",
-        hasHot,
-        hasWarm,
-        hasCold: tags.cold === "yes" || tags["drinking_water:cold"] === "yes",
+        hasHot: hasAnyTemperatureTag ? hasHotTag : true,
+        hasWarm: hasAnyTemperatureTag ? hasWarmTag || hasHotTag : true,
+        hasCold,
         hasIced,
         is24Hours: tags.opening_hours === "24/7",
         openHours: tags.opening_hours || "全天開放",
@@ -611,7 +611,6 @@ const PIN_ICON_IDS = {
   ICED_TRIPLE: "zw-pin-iced-triple",
   WARM_HOT: "zw-pin-warm-hot",
   HOT_OR_SINGLE: "zw-pin-hot-single",
-  UNTAGGED: "zw-pin-untagged",
 };
 
 /**
@@ -670,7 +669,6 @@ function syncLegendDots() {
     "dot-iced-preview": state.markerColors.ICED_TRIPLE,
     "dot-warm-preview": state.markerColors.WARM_HOT,
     "dot-hot-preview": state.markerColors.HOT_OR_SINGLE,
-    "dot-untagged-preview": state.markerColors.UNTAGGED,
   };
   for (const [id, color] of Object.entries(previews)) {
     const el = document.getElementById(id);
@@ -857,8 +855,6 @@ function initStationLayers() {
         PIN_ICON_IDS.ICED_TRIPLE,
         "WARM_HOT",
         PIN_ICON_IDS.WARM_HOT,
-        "UNTAGGED",
-        PIN_ICON_IDS.UNTAGGED,
         PIN_ICON_IDS.HOT_OR_SINGLE,
       ],
       "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 13, 0.8, 18, 1.1],
@@ -1022,23 +1018,19 @@ function renderDetailTags(station) {
   `;
 }
 
-/** 依站點目前的水溫標記預填「協助標記水溫」勾選框 */
+/** 依站點目前的水溫標記預填「協助更新水溫」勾選框 */
 function syncReviewTemperatureInputs(station) {
   const box = document.getElementById("review-temp-report-box");
   if (!box) return;
-  const isUntagged = getTemperatureCategory(station) === "UNTAGGED";
 
   document.getElementById("rev-temp-iced").checked = Boolean(station.hasIced);
   document.getElementById("rev-temp-warm").checked = Boolean(station.hasWarm);
   document.getElementById("rev-temp-cold").checked = Boolean(station.hasCold);
   document.getElementById("rev-temp-hot").checked = Boolean(station.hasHot);
 
-  box.classList.toggle("untagged-hint", isUntagged);
   const titleEl = box.querySelector(".temp-report-title");
   if (titleEl) {
-    titleEl.textContent = isUntagged
-      ? "🌡️ 此點位尚未標記水溫，歡迎勾選實際提供的水溫（送出後圖釘立即變色）："
-      : "🌡️ 協助更新此飲水機水溫（選填，送出後更新圖釘顏色）：";
+    titleEl.textContent = "🌡️ 協助更新此飲水機水溫（選填，送出後更新圖釘顏色）：";
   }
 }
 
@@ -1204,7 +1196,6 @@ function renderStationListItems() {
       iced: "ICED_TRIPLE",
       warm: "WARM_HOT",
       hot: "HOT_OR_SINGLE",
-      untagged: "UNTAGGED",
     }[state.currentListTab];
     if (tabCategory) {
       list = list.filter((s) => getTemperatureCategory(s) === tabCategory);
@@ -1332,12 +1323,11 @@ function renderMapSettingsControls() {
 }
 
 function renderColorPaletteOptions() {
-  const categories = ["ICED_TRIPLE", "WARM_HOT", "HOT_OR_SINGLE", "UNTAGGED"];
+  const categories = ["ICED_TRIPLE", "WARM_HOT", "HOT_OR_SINGLE"];
   const ids = {
     ICED_TRIPLE: "palette-iced",
     WARM_HOT: "palette-warm",
     HOT_OR_SINGLE: "palette-hot",
-    UNTAGGED: "palette-untagged",
   };
 
   for (const cat of categories) {
@@ -1679,7 +1669,7 @@ function bindEventHandlers() {
     try {
       const created = await DataSyncService.addReview(state.selectedStation.id, payload);
 
-      // 灰釘立即變色：以伺服器回傳的最新站點為準，離線時退回本地套用
+      // 使用者回報了水溫：以伺服器回傳的最新站點為準，離線時退回本地套用
       let temperatureChanged = false;
       if (hasTemperatureReport) {
         const station =

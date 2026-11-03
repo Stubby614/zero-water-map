@@ -105,7 +105,7 @@ class WaterStationRepository @Inject constructor(
         reviewDao.insertReview(StationReviewEntity.fromDomain(review))
         runCatching { api.createStationReview(review.stationId, review) }
 
-        // 使用者在評論中回報了實際水溫 → 立即更新本地站點標記（灰釘變色）並同步後端
+        // 使用者在評論中回報了實際水溫 → 立即更新本地站點標記（圖釘變色）並同步後端
         val reported = review.reportedTemperatures
         if (reported != null && reported.hasAny) {
             dao.updateTemperatures(

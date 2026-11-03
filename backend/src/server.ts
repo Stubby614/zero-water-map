@@ -22,7 +22,7 @@ export interface WaterStation {
   lastVerifiedEpochMillis: number;
 }
 
-/** 評論者可一併回報該飲水機實際提供的水溫，用於補齊尚未標記的 OSM 點位 */
+/** 評論者可一併回報該飲水機實際提供的水溫，用於修正或補齊該點位的水溫標記 */
 export interface ReportedTemperatures {
   hasIced?: boolean;
   hasWarm?: boolean;
@@ -124,13 +124,13 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** 水溫分類（全端統一規則）；四項皆未標記 → UNTAGGED */
+/** 水溫分類（全端統一規則）；完全沒有水溫標記者，依慣例視為溫水＋熱水（WARM_HOT） */
 function temperatureCategoryOf(station: WaterStation): string {
-  if (!station.hasIced && !station.hasWarm && !station.hasHot && !station.hasCold) {
-    return "UNTAGGED";
-  }
   if (station.hasIced) return "ICED_TRIPLE";
   if (station.hasWarm && station.hasHot) return "WARM_HOT";
+  if (!station.hasWarm && !station.hasHot && !station.hasIced && !station.hasCold) {
+    return "WARM_HOT";
+  }
   return "HOT_OR_SINGLE";
 }
 
@@ -418,7 +418,7 @@ export async function handleRequest(req: Request, clientIp = "127.0.0.1"): Promi
       };
       dataset.reviews.unshift(createdReview);
 
-      // 使用者於評論中回報了實際水溫 → 同步更新站點標記（灰釘立即轉為對應顏色）
+      // 使用者於評論中回報了實際水溫 → 同步更新站點標記與圖釘顏色
       const reported = body.reportedTemperatures;
       let updatedStation: WaterStation | undefined;
       if (

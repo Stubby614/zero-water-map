@@ -1101,20 +1101,11 @@ private fun StationDetailSheet(
                         }
                     }
 
-                    // 協助標記水溫：勾選後隨評論送出，該站點圖釘立即變色
-                    val isUntagged = !station.hasIced && !station.hasWarm && !station.hasCold && !station.hasHot
+                    // 協助更新水溫：勾選後隨評論送出，該站點圖釘立即變色
                     Text(
-                        text = if (isUntagged) {
-                            "🌡️ 此點位尚未標記水溫，歡迎勾選實際提供的水溫（送出後圖釘立即變色）："
-                        } else {
-                            "🌡️ 協助更新此飲水機水溫（選填）："
-                        },
+                        text = "🌡️ 協助更新此飲水機水溫（選填，送出後圖釘立即變色）：",
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (isUntagged) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(
                         modifier = Modifier

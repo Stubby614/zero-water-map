@@ -949,13 +949,16 @@ function osmElementToStation(el: OsmElement): WaterStation | null {
     tags["addr:floor"] ||
     "戶外 / 地面層公開區域";
 
-  // 僅在 OSM 有明確標記時才判定水溫，避免把未知誤判為「有冰水／有熱水／有冷水」。
-  // 四項皆為 false 的點位會歸類為 UNTAGGED（尚未標記水溫），由使用者評論協助補齊。
+  // 僅在 OSM 有明確標記時才判定水溫。若完全没有水溫標籤，依台灣現地慣例
+  // （除便利商店僅供熱水外，戶外與場館飲水機普遍具備溫水）視為「溫水＋熱水」。
   const hasIced = tags.iced === "yes" || tags["drinking_water:cold"] === "iced";
-  const hasHot = tags.hot === "yes" || tags["drinking_water:hot"] === "yes";
-  const hasWarm =
-    tags.warm === "yes" || tags["drinking_water:warm"] === "yes" || hasHot;
-  const hasCold = tags.cold === "yes" || tags["drinking_water:cold"] === "yes";
+  const hasHotTag = tags.hot === "yes" || tags["drinking_water:hot"] === "yes";
+  const hasWarmTag = tags.warm === "yes" || tags["drinking_water:warm"] === "yes";
+  const hasColdTag = tags.cold === "yes" || tags["drinking_water:cold"] === "yes";
+  const hasAnyTemperatureTag = hasIced || hasHotTag || hasWarmTag || hasColdTag;
+  const hasHot = hasAnyTemperatureTag ? hasHotTag : true;
+  const hasWarm = hasAnyTemperatureTag ? hasWarmTag || hasHotTag : true;
+  const hasCold = hasColdTag;
 
   return {
     id: `osm-${el.type}-${el.id}`,
@@ -1072,17 +1075,17 @@ function distanceMeters(aLat: number, aLon: number, bLat: number, bLon: number):
 
 /**
  * 水溫分類（全端統一規則）：
- * 0. 四項皆無標記 → UNTAGGED（尚未標記水溫）
  * 1. 含冰水 → ICED_TRIPLE
- * 2. 無冰水但有溫水＋熱水 → WARM_HOT
- * 3. 其餘有標記者 → HOT_OR_SINGLE
+ * 2. 溫水＋熱水 → WARM_HOT
+ * 3. 完全没有水溫標記（依慣例視為溫水＋熱水）→ WARM_HOT
+ * 4. 其餘已標記者（如僅冷水、僅熱水）→ HOT_OR_SINGLE
  */
 function temperatureCategoryOf(station: WaterStation): string {
-  if (!station.hasIced && !station.hasWarm && !station.hasHot && !station.hasCold) {
-    return "UNTAGGED";
-  }
   if (station.hasIced) return "ICED_TRIPLE";
   if (station.hasWarm && station.hasHot) return "WARM_HOT";
+  if (!station.hasWarm && !station.hasHot && !station.hasIced && !station.hasCold) {
+    return "WARM_HOT";
+  }
   return "HOT_OR_SINGLE";
 }
 
